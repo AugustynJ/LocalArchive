@@ -1,0 +1,11 @@
+media/
+
+backend-web/.env
+backend-web/venv/
+backend-web/__pycache__/
+
+frontend-web/.env
+frontend-web/node_modules/
+frontend-web/build/
+
+API_architecture.md
