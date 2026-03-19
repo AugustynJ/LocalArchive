@@ -67,66 +67,97 @@ function PasswordChange() {
   };
 
   return (
-    <div style={{ maxWidth: '420px', margin: '40px auto' }}>
-      <h1>Zmiana hasła</h1>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper">
+        <div className="form-container">
+          <h1>Zmiana hasła</h1>
 
-      {errors.length > 0 && (
-        <ul style={{ color: 'red', paddingLeft: '20px' }}>
-          {errors.map((err, i) => <li key={i}>{err}</li>)}
-        </ul>
-      )}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
+          {errors.length > 0 && (
+            <div className="error-container">
+              {errors.map((err, i) => (
+                <div key={i} className="error-message">⚠️ {err}</div>
+              ))}
+            </div>
+          )}
+          {success && (
+            <div style={{ 
+              color: 'var(--success-color)', 
+              fontWeight: 'bold', 
+              textAlign: 'center', 
+              marginBottom: '20px',
+              padding: '10px',
+              backgroundColor: 'rgba(39, 174, 96, 0.1)',
+              borderRadius: '8px',
+              border: '1px solid var(--success-color)'
+            }}>
+              ✔️ {success}
+            </div>
+          )}
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Aktualne hasło:<br />
-            <input
-              type="password"
-              name="current_password"
-              value={form.current_password}
-              onChange={handleChange}
-              style={{ width: '100%', padding: '6px' }}
-              autoComplete="current-password"
-            />
-          </label>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="password"
+                name="current_password"
+                value={form.current_password}
+                onChange={handleChange}
+                placeholder="Aktualne hasło"
+                autoComplete="current-password"
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="password"
+                name="new_password"
+                value={form.new_password}
+                onChange={handleChange}
+                placeholder="Nowe hasło"
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="password"
+                name="repeat_password"
+                value={form.repeat_password}
+                onChange={handleChange}
+                placeholder="Powtórz nowe hasło"
+                autoComplete="new-password"
+                required
+              />
+            </div>
+            
+            <p style={{ 
+              color: 'var(--text-secondary)', 
+              fontSize: '13px', 
+              marginBottom: '20px',
+              textAlign: 'center',
+              padding: '10px',
+              backgroundColor: 'var(--background-color)',
+              borderRadius: '8px',
+              border: '1px solid var(--border-color)'
+            }}>
+              📝 Hasło musi mieć 8–127 znaków, zawierać małą i wielką literę, cyfrę oraz znak specjalny.
+            </p>
+            
+            <div className="button-group">
+              <button type="submit" disabled={submitting} className="btn btn-primary">
+                {submitting ? '🔄 Zapisywanie...' : '🔐 Zmień hasło'}
+              </button>
+              <button type="button" onClick={() => navigate('/user')} className="btn btn-secondary">
+                Anuluj
+              </button>
+            </div>
+          </form>
         </div>
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Nowe hasło:<br />
-            <input
-              type="password"
-              name="new_password"
-              value={form.new_password}
-              onChange={handleChange}
-              style={{ width: '100%', padding: '6px' }}
-              autoComplete="new-password"
-            />
-          </label>
-        </div>
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Powtórz nowe hasło:<br />
-            <input
-              type="password"
-              name="repeat_password"
-              value={form.repeat_password}
-              onChange={handleChange}
-              style={{ width: '100%', padding: '6px' }}
-              autoComplete="new-password"
-            />
-          </label>
-        </div>
-        <p style={{ color: '#888', fontSize: '13px', marginBottom: '12px' }}>
-          Hasło musi mieć 8–127 znaków, zawierać małą i wielką literę, cyfrę oraz znak specjalny.
-        </p>
-        <div style={{ display: 'flex', gap: '12px' }}>
-          <button type="submit" disabled={submitting}>
-            {submitting ? 'Zapisywanie...' : 'Zmień hasło'}
-          </button>
-          <button type="button" onClick={() => navigate('/user')}>Anuluj</button>
-        </div>
-      </form>
+      </div>
     </div>
   );
 }

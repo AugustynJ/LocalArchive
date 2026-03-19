@@ -127,58 +127,92 @@ function Register() {
   };
 
   return (
-    <>
-      <form onSubmit={handleRegister}>
-        <input 
-          type="text" 
-          value={firstName}
-          onChange={e => setFirstName(e.target.value)} 
-          placeholder="Imię" 
-          maxLength="50"
-          required
-        />
-        {firstNameError && <div style={{color: 'red'}}>{firstNameError}</div>}
-        <input 
-          type="text" 
-          value={lastName}
-          onChange={e => setLastName(e.target.value)} 
-          placeholder="Nazwisko" 
-          maxLength="50"
-          required
-        />
-        {lastNameError && <div style={{color: 'red'}}>{lastNameError}</div>}
-        <input 
-          type="email" 
-          value={email}
-          onChange={e => setEmail(e.target.value)} 
-          onBlur={handleEmailBlur}
-          placeholder="Email" 
-          maxLength="50"
-          required
-        />
-        {emailError && <div style={{color: 'red'}}>{emailError}</div>}
-        <input 
-          type="password" 
-          value={password}
-          onChange={e => setPassword(e.target.value)} 
-          placeholder="Hasło" 
-          maxLength="127"
-          required
-        />
-        <input 
-          type="password" 
-          value={repeatPassword}
-          onChange={e => setRepeatPassword(e.target.value)} 
-          onBlur={handleRepeatPasswordBlur}
-          placeholder="Powtórz hasło" 
-          maxLength="127"
-          required
-        />
-        {passwordError && <div style={{color: 'red'}}>{passwordError}</div>}
-        <button type="submit">Zarejestruj</button>
-      </form>
-      <button type="button" onClick={handleLogin}>Masz już konto? Zaloguj się</button>
-    </>
+    <div className="page-container fade-in">
+      <div className="content-wrapper">
+        <div className="form-container">
+          <h1>Rejestracja</h1>
+          <form onSubmit={handleRegister}>
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="text" 
+                value={firstName}
+                onChange={e => setFirstName(e.target.value)} 
+                placeholder="Imię" 
+                maxLength="50"
+                required
+              />
+              {firstNameError && <div className="error-message">⚠️ {firstNameError}</div>}
+            </div>
+            
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="text" 
+                value={lastName}
+                onChange={e => setLastName(e.target.value)} 
+                placeholder="Nazwisko" 
+                maxLength="50"
+                required
+              />
+              {lastNameError && <div className="error-message">⚠️ {lastNameError}</div>}
+            </div>
+            
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="email" 
+                value={email}
+                onChange={e => setEmail(e.target.value)} 
+                onBlur={handleEmailBlur}
+                placeholder="Email" 
+                maxLength="50"
+                required
+              />
+              {emailError && <div className="error-message">⚠️ {emailError}</div>}
+            </div>
+            
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="password" 
+                value={password}
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="Hasło" 
+                maxLength="127"
+                required
+              />
+            </div>
+            
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="password" 
+                value={repeatPassword}
+                onChange={e => setRepeatPassword(e.target.value)} 
+                onBlur={handleRepeatPasswordBlur}
+                placeholder="Powtórz hasło" 
+                maxLength="127"
+                required
+              />
+              {passwordError && <div className="error-message">⚠️ {passwordError}</div>}
+            </div>
+            
+            <div className="button-group">
+              <button type="submit" className="btn btn-primary">
+                Zarejestruj
+              </button>
+            </div>
+          </form>
+          
+          <div className="button-group" style={{marginTop: '20px'}}>
+            <button type="button" onClick={handleLogin} className="btn btn-secondary">
+              Masz już konto? Zaloguj się
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

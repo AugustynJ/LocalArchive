@@ -55,20 +55,42 @@ function User() {
   };
 
   if (loading) {
-    return <div>Ładowanie...</div>;
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="loading-container">
+            <div>⏳ Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (error) {
     return (
-      <div>
-        <div style={{color: 'red'}}>{error}</div>
-        <button onClick={() => navigate('/login')}>Powrót do logowania</button>
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="error-container">
+            <div className="error-message">❌ {error}</div>
+            <button onClick={() => navigate('/login')} className="btn btn-primary" style={{marginTop: '20px'}}>
+              Powrót do logowania
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
 
   if (!userInfo) {
-    return <div>Brak danych użytkownika</div>;
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="error-container">
+            <div>Brak danych użytkownika</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const getRoleDisplayName = (role) => {
@@ -81,44 +103,71 @@ function User() {
   };
 
   return (
-    <div>
-      <h1>Panel użytkownika</h1>
-      <div style={{ marginBottom: '20px' }}>
-        <h2>Informacje o koncie</h2>
-        <p><strong>Imię:</strong> {userInfo.first_name}</p>
-        <p><strong>Nazwisko:</strong> {userInfo.last_name}</p>
-        <p><strong>Email:</strong> {userInfo.email}</p>
-        <p><strong>Rola:</strong> {getRoleDisplayName(userInfo.role)}</p>
-        <p><strong>Status:</strong> {userInfo.is_blocked ? 'Zablokowane' : 'Aktywne'}</p>
-      </div>
-      
-      <div style={{ marginBottom: '20px' }}>
-        <h2>Nawigacja</h2>
-        <button onClick={() => navigate('/photos')}>
-          Przeglądaj zdjęcia
-        </button>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper wide">
+        <h1>Panel użytkownika</h1>
+        
+        <div className="user-info">
+          <h2>Informacje o koncie</h2>
+          <div className="user-info-item">
+            <span className="user-info-label">Imię:</span>
+            <span className="user-info-value">{userInfo.first_name}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">Nazwisko:</span>
+            <span className="user-info-value">{userInfo.last_name}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">Email:</span>
+            <span className="user-info-value">{userInfo.email}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">Rola:</span>
+            <span className="user-info-value">{getRoleDisplayName(userInfo.role)}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">Status:</span>
+            <span className={`status-badge ${userInfo.is_blocked ? 'status-blocked' : 'status-active'}`}>
+              {userInfo.is_blocked ? 'Zablokowane' : 'Aktywne'}
+            </span>
+          </div>
+        </div>
+        
+        <div className="navigation-section">
+          <h2>Nawigacja</h2>
+          <div className="button-group">
+            <button onClick={() => navigate('/photos')} className="btn btn-primary">
+              📸 Przeglądaj zdjęcia
+            </button>
 
-        {(userInfo.role === 'admin' || userInfo.role === 'editor') && (
-          <button onClick={() => navigate('/photos/add')} style={{ marginLeft: '10px' }}>
-            Dodaj zdjęcie
-          </button>
-        )}
+            {(userInfo.role === 'admin' || userInfo.role === 'editor') && (
+              <button onClick={() => navigate('/photos/add')} className="btn btn-primary">
+                ➕ Dodaj zdjęcie
+              </button>
+            )}
 
-        {userInfo.role === 'admin' && (
-          <button onClick={() => navigate('/admin')} style={{ marginLeft: '10px' }}>
-            Panel administratora
-          </button>
-        )}
-      </div>
+            {userInfo.role === 'admin' && (
+              <button onClick={() => navigate('/admin')} className="btn btn-primary">
+                ⚙️ Panel administratora
+              </button>
+            )}
+          </div>
+        </div>
 
-      <div>
-        <button onClick={handleLogout}>Wyloguj się</button>
-        <button onClick={() => navigate('/user/change_password')} style={{ marginLeft: '10px' }}>
-          Zmień hasło
-        </button>
-        <button onClick={fetchUserInfo} style={{ marginLeft: '10px' }}>
-          Odśwież dane
-        </button>
+        <div className="navigation-section">
+          <h2>Konto</h2>
+          <div className="button-group">
+            <button onClick={() => navigate('/user/change_password')} className="btn btn-secondary">
+              🔐 Zmień hasło
+            </button>
+            <button onClick={fetchUserInfo} className="btn btn-secondary">
+              🔄 Odśwież dane
+            </button>
+            <button onClick={handleLogout} className="btn btn-secondary">
+              🚪 Wyloguj się
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

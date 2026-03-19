@@ -104,104 +104,213 @@ function MyPhotos() {
     }
   };
 
-  if (loading) return <div>Ładowanie...</div>;
+  if (loading) {
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="loading-container">
+            <div>🔄 Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1>Moje zdjęcia</h1>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper wide">
+        <h1>📸 Moje zdjęcia</h1>
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px' }}>
-        {photos.length === 0 && <p>Nie masz jeszcze żadnych zdjęć.</p>}
-        {photos.map(photo => (
-          <div key={photo.id} style={{ textAlign: 'center', width: '200px' }}>
-            <img
-              src={`/api/v1/media/${photo.filename}`}
-              alt={photo.title}
-              style={{ width: '200px', height: '200px', objectFit: 'cover' }}
-            />
-            <div><strong>{photo.title}</strong></div>
-            {photo.is_blocked && (
-              <div style={{ color: '#c0392b', fontWeight: 'bold', fontSize: '12px' }}>ZABLOKOWANE</div>
-            )}
-            <div style={{ color: '#666' }}>{photo.location}</div>
-            <div style={{ color: '#666' }}>{photo.photo_year ?? '—'}</div>
-            <button onClick={() => openEdit(photo)} style={{ marginTop: '6px' }}>
-              Edytuj
-            </button>
-          </div>
-        ))}
+        <div style={{ 
+          display: 'grid', 
+          gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', 
+          gap: '20px',
+          marginBottom: '30px'
+        }}>
+          {photos.length === 0 && (
+            <div className="error-container">
+              <p>📷 Nie masz jeszcze żadnych zdjęć.</p>
+            </div>
+          )}
+          {photos.map(photo => (
+            <div key={photo.id} style={{ 
+              textAlign: 'center',
+              padding: '15px',
+              backgroundColor: 'var(--surface-color)',
+              borderRadius: '12px',
+              border: photo.is_blocked ? '2px solid var(--error-color)' : '1px solid var(--border-color)',
+              transition: 'all 0.3s ease',
+              boxShadow: '0 2px 8px var(--shadow-color)'
+            }}>
+              <img
+                src={`/api/v1/media/${photo.filename}`}
+                alt={photo.title}
+                style={{ 
+                  width: '100%', 
+                  height: '180px', 
+                  objectFit: 'cover',
+                  borderRadius: '8px',
+                  marginBottom: '10px'
+                }}
+              />
+              <div style={{ 
+                fontWeight: 'bold', 
+                color: 'var(--text-color)',
+                marginBottom: '5px',
+                fontSize: '16px'
+              }}>
+                {photo.title}
+              </div>
+              {photo.is_blocked && (
+                <div className="status-badge status-blocked" style={{ marginBottom: '8px' }}>
+                  ZABLOKOWANE
+                </div>
+              )}
+              <div style={{ 
+                color: 'var(--text-secondary)', 
+                fontSize: '14px',
+                marginBottom: '10px'
+              }}>
+                📍 {photo.location}
+                {photo.photo_year && (
+                  <>
+                    <br />📅 {photo.photo_year}
+                  </>
+                )}
+              </div>
+              <button 
+                onClick={() => openEdit(photo)} 
+                className="btn btn-secondary"
+                style={{ fontSize: '14px', padding: '8px 16px' }}
+              >
+                ✏️ Edytuj
+              </button>
+            </div>
+          ))}
+        </div>
+
       </div>
 
       {editingPhoto && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
-          background: 'rgba(0,0,0,0.5)', display: 'flex',
-          alignItems: 'center', justifyContent: 'center', zIndex: 1000
+          background: 'rgba(0,0,0,0.7)', display: 'flex',
+          alignItems: 'center', justifyContent: 'center', zIndex: 1000,
+          backdropFilter: 'blur(5px)'
         }}>
           <div style={{
-            background: '#fff', padding: '24px', borderRadius: '8px',
-            minWidth: '320px', maxWidth: '480px', width: '100%'
+            background: 'var(--surface-color)',
+            padding: '30px',
+            borderRadius: '12px',
+            minWidth: '400px',
+            maxWidth: '500px',
+            width: '90%',
+            boxShadow: '0 20px 40px var(--shadow-color)',
+            border: '1px solid var(--border-color)'
           }}>
-            <h2>Edytuj zdjęcie</h2>
+            <h2 style={{ 
+              color: 'var(--text-color)', 
+              marginBottom: '20px',
+              textAlign: 'center'
+            }}>
+              ✏️ Edytuj zdjęcie
+            </h2>
 
             {editErrors.length > 0 && (
-              <ul style={{ color: 'red' }}>
-                {editErrors.map((err, i) => <li key={i}>{err}</li>)}
-              </ul>
+              <div className="error-container" style={{ marginBottom: '20px' }}>
+                {editErrors.map((err, i) => (
+                  <div key={i} className="error-message">⚠️ {err}</div>
+                ))}
+              </div>
             )}
-            {editSuccess && <p style={{ color: 'green' }}>{editSuccess}</p>}
+            {editSuccess && (
+              <div style={{ 
+                color: 'var(--success-color)', 
+                fontWeight: 'bold', 
+                textAlign: 'center', 
+                marginBottom: '20px',
+                padding: '10px',
+                backgroundColor: 'rgba(39, 174, 96, 0.1)',
+                borderRadius: '8px',
+                border: '1px solid var(--success-color)'
+              }}>
+                ✔️ {editSuccess}
+              </div>
+            )}
 
             <form onSubmit={handleEditSubmit}>
-              <div style={{ marginBottom: '12px' }}>
-                <label>
-                  Nazwa:<br />
-                  <input
-                    type="text"
-                    value={editForm.title}
-                    onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                    maxLength={255}
-                    style={{ width: '100%' }}
-                  />
-                </label>
+              <div className="form-group">
+                <input
+                  className="input-field"
+                  type="text"
+                  value={editForm.title}
+                  onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
+                  placeholder="Nazwa"
+                  maxLength={255}
+                  required
+                />
               </div>
-              <div style={{ marginBottom: '12px' }}>
-                <label>
-                  Lokalizacja:<br />
-                  <input
-                    type="text"
-                    value={editForm.location}
-                    onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
-                    maxLength={255}
-                    style={{ width: '100%' }}
-                  />
-                </label>
+              
+              <div className="form-group">
+                <input
+                  className="input-field"
+                  type="text"
+                  value={editForm.location}
+                  onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
+                  placeholder="Lokalizacja"
+                  maxLength={255}
+                  required
+                />
               </div>
-              <div style={{ marginBottom: '12px' }}>
-                <label>
-                  Rok:<br />
-                  <input
-                    type="number"
-                    value={editForm.photo_year}
-                    onChange={e => setEditForm(f => ({ ...f, photo_year: e.target.value }))}
-                    min={1}
-                    max={9999}
-                    style={{ width: '100%' }}
-                  />
-                </label>
+              
+              <div className="form-group">
+                <input
+                  className="input-field"
+                  type="number"
+                  value={editForm.photo_year}
+                  onChange={e => setEditForm(f => ({ ...f, photo_year: e.target.value }))}
+                  placeholder="Rok (opcjonalnie)"
+                  min={1}
+                  max={9999}
+                />
               </div>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'space-between', marginTop: '8px' }}>
+              
+              <div style={{ 
+                display: 'flex', 
+                gap: '12px', 
+                justifyContent: 'space-between', 
+                alignItems: 'center',
+                marginTop: '20px' 
+              }}>
                 <button
                   type="button"
                   onClick={handleDelete}
                   disabled={deleting || saving}
-                  style={{ color: '#fff', background: '#c0392b', border: 'none', padding: '6px 14px', borderRadius: '4px', cursor: 'pointer' }}
+                  className="btn"
+                  style={{ 
+                    backgroundColor: 'var(--error-color)',
+                    color: 'white',
+                    border: 'none'
+                  }}
                 >
-                  {deleting ? 'Usuwanie...' : 'Usuń'}
+                  {deleting ? '🔄 Usuwanie...' : '🗑️ Usuń'}
                 </button>
+                
                 <div style={{ display: 'flex', gap: '8px' }}>
-                  <button type="button" onClick={closeEdit} disabled={deleting || saving}>Anuluj</button>
-                  <button type="submit" disabled={saving || deleting}>
-                    {saving ? 'Zapisywanie...' : 'Zapisz'}
+                  <button 
+                    type="button" 
+                    onClick={closeEdit} 
+                    disabled={deleting || saving}
+                    className="btn btn-secondary"
+                  >
+                    Anuluj
+                  </button>
+                  <button 
+                    type="submit" 
+                    disabled={saving || deleting}
+                    className="btn btn-primary"
+                  >
+                    {saving ? '🔄 Zapisywanie...' : '💾 Zapisz'}
                   </button>
                 </div>
               </div>
@@ -209,10 +318,6 @@ function MyPhotos() {
           </div>
         </div>
       )}
-
-      <div style={{ marginTop: '20px' }}>
-        <button onClick={() => navigate('/photos')}>Powrót do zdjęć</button>
-      </div>
     </div>
   );
 }

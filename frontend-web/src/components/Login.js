@@ -71,34 +71,62 @@ function Login() {
   };
 
   return (
-    <>
-      <form onSubmit={handleLogin}>
-        <input 
-          type="email" 
-          value={email}
-          onChange={e => setEmail(e.target.value)} 
-          placeholder="Email" 
-          maxLength="50"
-          required
-        />
-        {emailError && <div style={{color: 'red'}}>{emailError}</div>}
-        <input 
-          type="password" 
-          value={password}
-          onChange={e => setPassword(e.target.value)} 
-          placeholder="Hasło" 
-          maxLength="127"
-          required
-        />
-        {passwordError && <div style={{color: 'red'}}>{passwordError}</div>}
-        <button type="submit">Zaloguj</button>
-      </form>
-      <button type="button" onClick={handleRegister}>Rejestracja</button>
-      <br />
-      <button type="button" onClick={() => navigate('/forgot_password')} style={{ marginTop: '8px', background: 'none', border: 'none', color: '#2980b9', cursor: 'pointer', padding: 0, textDecoration: 'underline' }}>
-        Nie pamiętasz hasła?
-      </button>
-    </>
+    <div className="page-container fade-in">
+      <div className="content-wrapper">
+        <div className="form-container">
+          <h1>Logowanie</h1>
+          <form onSubmit={handleLogin}>
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="email" 
+                value={email}
+                onChange={e => setEmail(e.target.value)} 
+                placeholder="Email" 
+                maxLength="50"
+                required
+              />
+              {emailError && <div className="error-message">⚠️ {emailError}</div>}
+            </div>
+            
+            <div className="form-group">
+              <input 
+                className="input-field"
+                type="password" 
+                value={password}
+                onChange={e => setPassword(e.target.value)} 
+                placeholder="Hasło" 
+                maxLength="127"
+                required
+              />
+              {passwordError && <div className="error-message">⚠️ {passwordError}</div>}
+            </div>
+            
+            <div className="button-group">
+              <button type="submit" className="btn btn-primary">
+                Zaloguj się
+              </button>
+            </div>
+          </form>
+          
+          <div className="button-group" style={{ marginTop: '20px' }}>
+            <button type="button" onClick={handleRegister} className="btn btn-secondary">
+              Rejestracja
+            </button>
+          </div>
+          
+          <div style={{ textAlign: 'center', marginTop: '20px' }}>
+            <button 
+              type="button" 
+              onClick={() => navigate('/forgot_password')} 
+              className="btn-link"
+            >
+              Nie pamiętasz hasła?
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }
 

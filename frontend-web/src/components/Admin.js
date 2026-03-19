@@ -43,36 +43,71 @@ function Admin() {
   };
 
   if (loading) {
-    return <div>Ładowanie...</div>;
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="loading-container">
+            <div>🔄 Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
-    <div>
-      <h1>Panel administratora</h1>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper wide">
+        <h1>⚙️ Panel administratora</h1>
 
-      <div style={{ marginBottom: '20px', display: 'flex', gap: '10px', flexWrap: 'wrap' }}>
-        <button onClick={() => navigate('/admin/audit')}>Ostatnio dodane</button>
-        <button onClick={() => navigate('/admin/manage_users')}>Zarządzanie użytkownikami</button>
-        <button onClick={() => navigate('/admin/manage_photos')}>Zarządzanie zdjęciami</button>
-      </div>
-
-      <div style={{ marginBottom: '20px' }}>
-        <h2>Test dostępu do API</h2>
-        <button onClick={runAdminTest}>Wyślij żądanie do /admin/test</button>
-        {testResult && (
-          <div style={{ marginTop: '10px', color: 'green' }}>
-            <strong>Odpowiedź:</strong> {JSON.stringify(testResult)}
+        <div className="navigation-section">
+          <h2>Zarządzanie</h2>
+          <div className="button-group">
+            <button onClick={() => navigate('/admin/audit')} className="btn btn-primary">
+              📊 Ostatnio dodane
+            </button>
+            <button onClick={() => navigate('/admin/manage_users')} className="btn btn-primary">
+              👥 Zarządzanie użytkownikami
+            </button>
+            <button onClick={() => navigate('/admin/manage_photos')} className="btn btn-primary">
+              📷 Zarządzanie zdjęciami
+            </button>
           </div>
-        )}
-        {testError && (
-          <div style={{ marginTop: '10px', color: 'red' }}>
-            <strong>Błąd:</strong> {testError}
-          </div>
-        )}
-      </div>
+        </div>
 
-      <div>
-        <button onClick={() => navigate('/user')}>Powrót do panelu użytkownika</button>
+        <div className="navigation-section">
+          <h2>Test dostępu do API</h2>
+          <div className="button-group">
+            <button onClick={runAdminTest} className="btn btn-secondary">
+              🗋 Wyślij żądanie do /admin/test
+            </button>
+          </div>
+          
+          {testResult && (
+            <div style={{ 
+              marginTop: '15px', 
+              color: 'var(--success-color)',
+              padding: '10px',
+              backgroundColor: 'rgba(39, 174, 96, 0.1)',
+              borderRadius: '8px',
+              border: '1px solid var(--success-color)'
+            }}>
+              <strong>✔️ Odpowiedź:</strong> {JSON.stringify(testResult)}
+            </div>
+          )}
+          {testError && (
+            <div className="error-message" style={{ marginTop: '15px' }}>
+              ⚠️ <strong>Błąd:</strong> {testError}
+            </div>
+          )}
+        </div>
+
+        <div className="navigation-section">
+          <div className="button-group">
+            <button onClick={() => navigate('/user')} className="btn btn-secondary">
+              🚪 Powrót do panelu użytkownika
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );

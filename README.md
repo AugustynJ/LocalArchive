@@ -9,9 +9,9 @@
 ### TODO:
 **Frontend:**  
 ✅ Communicate with API  
-⌛ CSS  
-⌛ Light and Dark mode  
-⌛ RWD Responsive Web Design
+✅ CSS  
+✅ Light and Dark mode  
+✅ RWD Responsive Web Design
 
 **Backend:**  
 ✅ Connect to pgsql and redis  

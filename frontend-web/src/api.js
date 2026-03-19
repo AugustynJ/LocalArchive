@@ -1,7 +1,25 @@
 import axios from 'axios';
 
+// Determine the API base URL based on environment
+const getApiBaseURL = () => {
+  // In production or when accessing from different device, use full URL
+  if (process.env.NODE_ENV === 'production') {
+    return '/api/v1';
+  }
+  
+  // In development, check if we're on mobile/different device
+  const hostname = window.location.hostname;
+  if (hostname !== 'localhost' && hostname !== '127.0.0.1') {
+    // Mobile or network access - use the current hostname with backend port
+    return `http://${hostname}:5000/api/v1`;
+  }
+  
+  // Local development on same machine
+  return '/api/v1';
+};
+
 const api = axios.create({
-  baseURL: '/api/v1', 
+  baseURL: getApiBaseURL(),
   withCredentials: true
 });
 
@@ -24,7 +42,7 @@ api.interceptors.response.use(
         // Próba odświeżenia tokena - używamy axios bezpośrednio
         // żeby uniknąć nieskończonej pętli z interceptorem
         const refreshResponse = await axios.post(
-          '/api/v1/token/refresh',
+          `${getApiBaseURL()}/token/refresh`,
           {},
           { 
             withCredentials: true,

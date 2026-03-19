@@ -38,52 +38,62 @@ function ForgotPassword() {
   };
 
   return (
-    <div style={{ maxWidth: '420px', margin: '60px auto' }}>
-      <h1>Resetowanie hasła</h1>
+    <div className="page-container fade-in">
+      <div className="content-wrapper">
+        <div className="form-container">
+          <h1>Resetowanie hasła</h1>
 
-      {!sent ? (
-        <>
-          <p style={{ color: '#555', marginBottom: '16px' }}>
-            Podaj adres e-mail powiązany z Twoim kontem. Wyślemy Ci link umożliwiający
-            ustawienie nowego hasła.
-          </p>
+          {!sent ? (
+            <>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: '20px', textAlign: 'center' }}>
+                Podaj adres e-mail powiązany z Twoim kontem. Wyślemy Ci link umożliwiający
+                ustawienie nowego hasła.
+              </p>
 
-          {error && <p style={{ color: 'red' }}>{error}</p>}
+              {error && <div className="error-message">⚠️ {error}</div>}
 
-          <form onSubmit={handleSubmit}>
-            <div style={{ marginBottom: '14px' }}>
-              <label>
-                Adres e-mail:<br />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => { setEmail(e.target.value); setError(''); }}
-                  style={{ width: '100%', padding: '6px' }}
-                  autoComplete="email"
-                  disabled={submitting}
-                />
-              </label>
-            </div>
-            <div style={{ display: 'flex', gap: '12px' }}>
-              <button type="submit" disabled={submitting}>
-                {submitting ? 'Wysyłanie...' : 'Wyślij link'}
-              </button>
-              <button type="button" onClick={() => navigate('/login')}>
-                Powrót do logowania
-              </button>
-            </div>
-          </form>
-        </>
-      ) : (
-        <>
-          <p style={{ color: 'green', fontWeight: 'bold' }}>{message}</p>
-          <p style={{ color: '#555' }}>
-            Sprawdź swoją skrzynkę odbiorczą i kliknij link w wiadomości.
-            Link jest ważny przez 15 minut.
-          </p>
-          <button onClick={() => navigate('/login')}>Powrót do logowania</button>
-        </>
-      )}
+              <form onSubmit={handleSubmit}>
+                <div className="form-group">
+                  <input
+                    className="input-field"
+                    type="email"
+                    value={email}
+                    onChange={(e) => { setEmail(e.target.value); setError(''); }}
+                    placeholder="Adres e-mail"
+                    autoComplete="email"
+                    disabled={submitting}
+                    required
+                  />
+                </div>
+                
+                <div className="button-group">
+                  <button type="submit" disabled={submitting} className="btn btn-primary">
+                    {submitting ? '📬 Wysyłanie...' : '📬 Wyślij link'}
+                  </button>
+                  <button type="button" onClick={() => navigate('/login')} className="btn btn-secondary">
+                    Powrót do logowania
+                  </button>
+                </div>
+              </form>
+            </>
+          ) : (
+            <>
+              <div style={{ color: 'var(--success-color)', fontWeight: 'bold', textAlign: 'center', marginBottom: '20px' }}>
+                ✔️ {message}
+              </div>
+              <p style={{ color: 'var(--text-secondary)', textAlign: 'center', marginBottom: '20px' }}>
+                Sprawdź swoją skrzynkę odbiorczą i kliknij link w wiadomości.
+                Link jest ważny przez 15 minut.
+              </p>
+              <div className="button-group">
+                <button onClick={() => navigate('/login')} className="btn btn-primary">
+                  Powrót do logowania
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

@@ -34,7 +34,15 @@ function AddPhoto() {
   }, [checkAccess]);
 
   if (loading) {
-    return <div>Ładowanie...</div>;
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="loading-container">
+            <div>🔄 Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   const handleFileChange = (e) => {
@@ -99,71 +107,111 @@ function AddPhoto() {
   };
 
   return (
-    <div>
-      <h1>Dodaj zdjęcie</h1>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper">
+        <div className="form-container">
+          <h1>📷 Dodaj zdjęcie</h1>
 
-      {errors.length > 0 && (
-        <ul style={{ color: 'red' }}>
-          {errors.map((err, i) => <li key={i}>{err}</li>)}
-        </ul>
-      )}
-      {success && <p style={{ color: 'green' }}>{success}</p>}
+          {errors.length > 0 && (
+            <div className="error-container">
+              {errors.map((err, i) => (
+                <div key={i} className="error-message">⚠️ {err}</div>
+              ))}
+            </div>
+          )}
+          {success && (
+            <div style={{ 
+              color: 'var(--success-color)', 
+              fontWeight: 'bold', 
+              textAlign: 'center', 
+              marginBottom: '20px',
+              padding: '10px',
+              backgroundColor: 'rgba(39, 174, 96, 0.1)',
+              borderRadius: '8px',
+              border: '1px solid var(--success-color)'
+            }}>
+              ✔️ {success}
+            </div>
+          )}
 
-      <form onSubmit={handleSubmit}>
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Nazwa zdjęcia:<br />
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              maxLength={100}
-            />
-          </label>
+          <form onSubmit={handleSubmit}>
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Nazwa zdjęcia"
+                maxLength={100}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="text"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Lokalizacja"
+                maxLength={255}
+                required
+              />
+            </div>
+
+            <div className="form-group">
+              <input
+                className="input-field"
+                type="number"
+                value={year}
+                onChange={(e) => setYear(e.target.value)}
+                placeholder="Rok (opcjonalnie)"
+                min={1}
+                max={9999}
+              />
+            </div>
+
+            <div className="form-group">
+              <label style={{ 
+                color: 'var(--text-secondary)', 
+                fontSize: '14px', 
+                marginBottom: '8px', 
+                display: 'block' 
+              }}>
+                📷 Zdjęcie (maks. 1 MB):
+              </label>
+              <input
+                type="file"
+                accept="image/*"
+                onChange={handleFileChange}
+                style={{
+                  width: '100%',
+                  padding: '12px',
+                  border: '2px solid var(--border-color)',
+                  borderRadius: '8px',
+                  backgroundColor: 'var(--input-bg)',
+                  color: 'var(--text-color)',
+                  fontSize: '16px',
+                  transition: 'all 0.3s ease'
+                }}
+                required
+              />
+              {fileError && <div className="error-message">⚠️ {fileError}</div>}
+            </div>
+
+            <div className="button-group">
+              <button type="submit" className="btn btn-primary">
+                💾 Dodaj zdjęcie
+              </button>
+            </div>
+          </form>
+
+          <div className="button-group" style={{marginTop: '20px'}}>
+            <button onClick={() => navigate('/photos')} className="btn btn-secondary">
+              ← Powrót do zdjęć
+            </button>
+          </div>
         </div>
-
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Lokalizacja:<br />
-            <input
-              type="text"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              maxLength={255}
-            />
-          </label>
-        </div>
-
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Rok:<br />
-            <input
-              type="number"
-              value={year}
-              onChange={(e) => setYear(e.target.value)}
-              min={1}
-              max={9999}
-            />
-          </label>
-        </div>
-
-        <div style={{ marginBottom: '12px' }}>
-          <label>
-            Zdjęcie (maks. 1 MB):<br />
-            <input
-              type="file"
-              accept="image/*"
-              onChange={handleFileChange}
-            />
-          </label>
-          {fileError && <div style={{ color: 'red' }}>{fileError}</div>}
-        </div>
-
-        <button type="submit">Dodaj zdjęcie</button>
-      </form>
-
-      <div style={{ marginTop: '20px' }}>
-        <button onClick={() => navigate('/photos')}>Powrót do zdjęć</button>
       </div>
     </div>
   );

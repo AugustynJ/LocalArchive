@@ -1,5 +1,6 @@
 import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { ThemeProvider, useTheme } from './ThemeContext';
 import Home from './components/Home';
 import Login from './components/Login';
 import Register from './components/Register';
@@ -16,10 +17,46 @@ import ManageUsers from './components/ManageUsers';
 import PasswordChange from './components/PasswordChange';
 import ForgotPassword from './components/ForgotPassword';
 import ResetPassword from './components/ResetPassword';
+import './components.css';
 
-function App() {
+function ThemeSwitcher() {
+  const { theme, toggleTheme } = useTheme();
+  
   return (
-    <BrowserRouter>
+    <button 
+      className="theme-switcher" 
+      onClick={toggleTheme}
+      title={`Switch to ${theme === 'light' ? 'dark' : 'light'} mode`}
+    >
+      {theme === 'light' ? '🌙' : '☀️'}
+    </button>
+  );
+}
+
+function Header() {
+  const location = useLocation();
+  const showBackButton = !['/home', '/login'].includes(location.pathname);
+  
+  return (
+    <div className="header">
+      {showBackButton && (
+        <button 
+          className="back-button" 
+          onClick={() => window.history.back()}
+        >
+          ← Powrót
+        </button>
+      )}
+      {!showBackButton && <div></div>}
+      <ThemeSwitcher />
+    </div>
+  );
+}
+
+function AppContent() {
+  return (
+    <div className="app-container">
+      <Header />
       <Routes>
         <Route path="/" element={<Navigate to="/home" />} />
         <Route path="/home" element={<Home />} />
@@ -40,7 +77,17 @@ function App() {
         <Route path="/reset_password/:token" element={<ResetPassword />} />
         <Route path="*" element={<Navigate to="/home" />} />
       </Routes>
-    </BrowserRouter>
+    </div>
+  );
+}
+
+function App() {
+  return (
+    <ThemeProvider>
+      <BrowserRouter>
+        <AppContent />
+      </BrowserRouter>
+    </ThemeProvider>
   );
 }
 

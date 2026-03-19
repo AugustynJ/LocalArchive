@@ -30,27 +30,82 @@ function PhotoDetail() {
     fetchPhoto();
   }, [fetchPhoto]);
 
-  if (loading) return <div>Ładowanie...</div>;
+  if (loading) {
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="loading-container">
+            <div>🔄 Ładowanie...</div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
-  if (error) return (
-    <div>
-      <div style={{ color: 'red' }}>{error}</div>
-      <button onClick={() => navigate('/photos')}>Powrót do zdjęć</button>
-    </div>
-  );
+  if (error) {
+    return (
+      <div className="page-container with-header fade-in">
+        <div className="content-wrapper">
+          <div className="error-container">
+            <div className="error-message">⚠️ {error}</div>
+            <div className="button-group" style={{marginTop: '20px'}}>
+              <button onClick={() => navigate('/photos')} className="btn btn-primary">
+                ← Powrót do zdjęć
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div>
-      <h1>{photo.title}</h1>
-      <img
-        src={`/api/v1/media/${photo.filename}`}
-        alt={photo.title}
-        style={{ maxWidth: '100%', maxHeight: '600px', objectFit: 'contain' }}
-      />
-      <p><strong>Lokalizacja:</strong> {photo.location}</p>
-      <p><strong>Rok:</strong> {photo.photo_year ?? '—'}</p>
-      <p><strong>Dodano:</strong> {new Date(photo.created_at).toLocaleString('pl-PL')}</p>
-      <button onClick={() => navigate('/photos')}>Powrót do zdjęć</button>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper wide">
+        <h1>📷 {photo.title}</h1>
+        
+        <div style={{ 
+          textAlign: 'center', 
+          marginBottom: '30px',
+          padding: '20px',
+          backgroundColor: 'var(--background-color)',
+          borderRadius: '12px',
+          border: '1px solid var(--border-color)'
+        }}>
+          <img
+            src={`/api/v1/media/${photo.filename}`}
+            alt={photo.title}
+            style={{ 
+              maxWidth: '100%', 
+              maxHeight: '600px', 
+              objectFit: 'contain',
+              borderRadius: '8px',
+              boxShadow: '0 4px 12px var(--shadow-color)'
+            }}
+          />
+        </div>
+        
+        <div className="user-info">
+          <div className="user-info-item">
+            <span className="user-info-label">📍 Lokalizacja:</span>
+            <span className="user-info-value">{photo.location}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">📅 Rok:</span>
+            <span className="user-info-value">{photo.photo_year ?? '—'}</span>
+          </div>
+          <div className="user-info-item">
+            <span className="user-info-label">🕰️ Dodano:</span>
+            <span className="user-info-value">{new Date(photo.created_at).toLocaleString('pl-PL')}</span>
+          </div>
+        </div>
+        
+        <div className="button-group">
+          <button onClick={() => navigate('/photos')} className="btn btn-secondary">
+            ← Powrót do zdjęć
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

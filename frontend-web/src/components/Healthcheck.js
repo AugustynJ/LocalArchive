@@ -30,12 +30,25 @@ function Healthcheck() {
   };
 
   return (
-    <div>
-      <h2>Healthcheck</h2>
-      <p>{status}</p>
-      <button onClick={handleRefresh} disabled={isLoading}>
-        {isLoading ? 'Sprawdzanie...' : 'Odśwież'}
-      </button>
+    <div className="page-container with-header fade-in">
+      <div className="content-wrapper">
+        <h1>Healthcheck</h1>
+        <div className="user-info">
+          <div className="user-info-item">
+            <span className="user-info-label">Status aplikacji:</span>
+            <span className="user-info-value">{status}</span>
+          </div>
+        </div>
+        <div className="button-group">
+          <button 
+            onClick={handleRefresh} 
+            disabled={isLoading}
+            className="btn btn-primary"
+          >
+            {isLoading ? '🔄 Sprawdzanie...' : '🔄 Odśwież'}
+          </button>
+        </div>
+      </div>
     </div>
   );
 }
