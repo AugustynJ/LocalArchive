@@ -23,7 +23,7 @@ function ForgotPassword() {
 
     try {
       const res = await axios.post(
-        `${process.env.REACT_APP_API_URL || 'http://localhost:5000'}/api/v1/forgot_password`,
+        `${process.env.REACT_APP_API_URL || ''}/api/v1/forgot_password`,
         { email: email.trim() },
         { withCredentials: true }
       );

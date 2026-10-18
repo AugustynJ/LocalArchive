@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { SESSION_REQUIRED } from '../constants';
 import { useNavigate } from 'react-router-dom';
 
 function Admin() {
@@ -34,7 +35,7 @@ function Admin() {
     } catch (err) {
       if (err.response?.status === 403) {
         setTestError('Brak dostępu - niewystarczające uprawnienia');
-      } else if (err.response?.status === 401) {
+      } else if (err.response?.status === SESSION_REQUIRED) {
         navigate('/login');
       } else {
         setTestError('Błąd podczas wywołania endpointu');
@@ -46,7 +47,7 @@ function Admin() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -59,7 +60,7 @@ function Admin() {
       <div className="content-wrapper wide">
         <h1>⚙️ Panel administratora</h1>
 
-        <div className="navigation-section">
+        <nav className="navigation-section" aria-label="Zarządzanie">
           <h2>Zarządzanie</h2>
           <div className="button-group">
             <button onClick={() => navigate('/admin/audit')} className="btn btn-primary">
@@ -72,13 +73,13 @@ function Admin() {
               📷 Zarządzanie zdjęciami
             </button>
           </div>
-        </div>
+        </nav>
 
         <div className="navigation-section">
           <h2>Test dostępu do API</h2>
           <div className="button-group">
             <button onClick={runAdminTest} className="btn btn-secondary">
-              🗋 Wyślij żądanie do /admin/test
+              🧪 Wyślij żądanie do /admin/test
             </button>
           </div>
           

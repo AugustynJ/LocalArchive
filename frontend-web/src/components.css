@@ -1,37 +1,7 @@
 /* CSS Variables for Theming */
-:root[data-theme="light"] {
-  --primary-color: #2980b9;
-  --primary-hover: #3498db;
-  --secondary-color: #34495e;
-  --background-color: #ffffff;
-  --surface-color: #f8f9fa;
-  --text-color: #2c3e50;
-  --text-secondary: #7f8c8d;
-  --border-color: #ddd;
-  --shadow-color: rgba(0, 0, 0, 0.1);
-  --error-color: #e74c3c;
-  --success-color: #27ae60;
-  --warning-color: #f39c12;
-  --input-bg: #ffffff;
-  --button-gradient: linear-gradient(145deg, #3498db, #2980b9);
-}
+/* Motyw jasny: themes/light.css (stary motyw: themes/light-legacy.css) */
 
-:root[data-theme="dark"] {
-  --primary-color: #3498db;
-  --primary-hover: #5dade2;
-  --secondary-color: #34495e;
-  --background-color: #1a1a1a;
-  --surface-color: #2c2c2c;
-  --text-color: #ecf0f1;
-  --text-secondary: #bdc3c7;
-  --border-color: #555;
-  --shadow-color: rgba(0, 0, 0, 0.3);
-  --error-color: #e74c3c;
-  --success-color: #27ae60;
-  --warning-color: #f39c12;
-  --input-bg: #34495e;
-  --button-gradient: linear-gradient(145deg, #5dade2, #3498db);
-}
+/* Motyw ciemny: themes/dark.css (stary motyw: themes/dark-legacy.css) */
 
 /* Global Styles */
 * {
@@ -197,6 +167,317 @@ p {
   color: var(--text-secondary);
 }
 
+/* Accessibility helpers */
+.field-label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--text-secondary);
+  text-align: left;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.skip-link {
+  position: absolute;
+  top: -100px;
+  left: 16px;
+  z-index: 2000;
+  padding: 10px 16px;
+  border-radius: 8px;
+  background: var(--button-gradient);
+  color: #ffffff;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  top: 12px;
+}
+
+/* Widoczny fokus przy obsłudze klawiaturą (mysz go nie pokazuje) */
+a:focus-visible,
+button:focus-visible,
+select:focus-visible,
+input[type="file"]:focus-visible,
+[tabindex]:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+main:focus {
+  outline: none; /* cel linku "Przejdź do treści" – bez ramki wokół całej strony */
+}
+
+.photo-card-link {
+  display: block;
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Admin data tables */
+.table-wrapper {
+  margin-bottom: 20px;
+  background-color: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.data-table th,
+.data-table td {
+  padding: 10px 8px;
+  border: 1px solid var(--border-color);
+  text-align: left;
+  vertical-align: middle;
+  color: var(--text-color);
+}
+
+.data-table th {
+  background-color: var(--background-color);
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.data-table tr.row-changed {
+  background-color: rgba(241, 196, 15, 0.12);
+}
+
+.data-table .cell-muted {
+  font-size: 14px;
+  color: var(--text-secondary);
+}
+
+.user-cell-name {
+  font-weight: 500;
+}
+
+.user-cell-email {
+  font-size: 13px;
+  color: var(--text-secondary);
+  overflow-wrap: anywhere;
+}
+
+.table-select {
+  width: 100%;
+  min-width: 90px;
+  padding: 6px 8px;
+  border: 2px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--input-bg);
+  color: var(--text-color);
+  font-size: 14px;
+}
+
+.table-select:focus {
+  border-color: var(--primary-color);
+}
+
+.cell-hint {
+  margin-top: 4px;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.status-cell {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.btn.btn-small {
+  min-width: 0;
+  padding: 6px 12px;
+  font-size: 13px;
+}
+
+.btn-success {
+  background-color: var(--button-success-bg);
+  color: white;
+}
+
+/* Nieaktywny przycisk: czytelny, ale wyraźnie "wyłączony" */
+.btn-muted,
+.btn-muted:hover {
+  background: var(--background-color);
+  color: var(--text-secondary);
+  border: 1px dashed var(--border-color);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
+}
+
+/* Wąskie ekrany: wiersze tabeli jako karty – bez przewijania w poziomie */
+@media (max-width: 640px) {
+  .data-table thead {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+  }
+
+  .data-table,
+  .data-table tbody,
+  .data-table tr,
+  .data-table td {
+    display: block;
+    width: 100%;
+  }
+
+  .data-table tr {
+    padding: 8px 0;
+    border-bottom: 1px solid var(--border-color);
+  }
+
+  .data-table td {
+    display: grid;
+    grid-template-columns: 9.5rem 1fr;
+    gap: 8px;
+    border: none;
+    padding: 6px 12px;
+  }
+
+  .data-table td::before {
+    content: attr(data-label);
+    font-weight: 600;
+    color: var(--text-color);
+  }
+}
+
+/* Modal dialogs (ConfirmDialog) */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+}
+
+.confirm-overlay {
+  z-index: 1100; /* nad oknem edycji zdjęcia */
+}
+
+.modal-box {
+  width: 100%;
+  max-width: 440px;
+  padding: 28px;
+  background: var(--surface-color);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 20px 40px var(--shadow-color);
+}
+
+.modal-title {
+  margin-bottom: 12px;
+  font-size: 1.3rem;
+  color: var(--text-color);
+  text-align: center;
+}
+
+.modal-message {
+  margin-bottom: 24px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.modal-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  justify-content: center;
+}
+
+.btn-danger {
+  background-color: var(--button-danger-bg);
+  color: white;
+}
+
+.btn-danger:hover {
+  filter: brightness(0.9);
+}
+
+/* Password field with visibility toggle */
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper .input-field {
+  padding-right: 52px;
+}
+
+.password-wrapper .input-field::-ms-reveal {
+  display: none;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: flex;
+  align-items: center;
+  padding: 6px;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.password-toggle:hover {
+  color: var(--primary-color);
+}
+
+.password-toggle:focus-visible {
+  color: var(--primary-color);
+  outline: 2px solid var(--primary-color);
+  outline-offset: 0;
+}
+
+.success-message {
+  color: var(--success-color);
+  background-color: rgba(39, 174, 96, 0.1);
+  border: 1px solid var(--success-color);
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 500;
+}
+
+.error-banner {
+  color: var(--error-color);
+  background-color: rgba(231, 76, 60, 0.1);
+  border: 1px solid var(--error-color);
+  border-radius: 8px;
+  padding: 12px 15px;
+  margin-bottom: 20px;
+  text-align: center;
+  font-weight: 500;
+}
+
 .error-message {
   color: var(--error-color);
   font-size: 14px;
@@ -234,7 +515,7 @@ p {
 }
 
 .btn-secondary {
-  background-color: var(--text-secondary);
+  background-color: var(--button-secondary-bg);
   color: white;
 }
 
@@ -459,28 +740,72 @@ p {
 }
 
 /* Focus Management for Accessibility */
-.btn:focus,
-.input-field:focus,
-.back-button:focus,
-.theme-switcher:focus {
+.btn:focus-visible,
+.back-button:focus-visible,
+.theme-switcher:focus-visible {
+  outline: 3px solid var(--primary-color);
+  outline-offset: 2px;
+}
+
+.input-field:focus {
   outline: none;
-  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.3);
+  box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.35);
 }
 
 /* Print Styles */
 @media print {
+  /* Wydruk = ten sam widok bez elementów sterujących (T7) */
   .header,
   .theme-switcher,
-  .back-button {
-    display: none;
+  .back-button,
+  .button-group,
+  button,
+  input,
+  select,
+  textarea,
+  form,
+  .no-print {
+    display: none !important;
   }
-  
+
+  /* Zawsze jasne kolory – także w motywie ciemnym (selektor silniejszy niż :root[data-theme="dark"]) */
+  html:root[data-theme] {
+    --background-color: #ffffff;
+    --surface-color: #ffffff;
+    --text-color: #000000;
+    --text-secondary: #333333;
+    --border-color: #cccccc;
+  }
+
+  *,
+  *::before,
+  *::after {
+    transition: none !important;
+  }
+
+  body {
+    background: #ffffff;
+    color: #000000;
+  }
+
   .page-container {
     padding: 0;
   }
-  
+
   .content-wrapper {
     box-shadow: none;
-    border: 1px solid #ccc;
+    border: none;
+    max-width: 100%;
+  }
+
+  img {
+    max-height: 60vh !important;
+    box-shadow: none !important;
+    break-inside: avoid;
+  }
+
+  .fade-in {
+    animation: none !important;
+    opacity: 1 !important;
   }
 }

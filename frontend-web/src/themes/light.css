@@ -1,0 +1,21 @@
+/* Motyw jasny: te same odcienie co wcześniej, przyciemnione do kontrastu ≥ 4.5:1 (WCAG 2.2 AA).
+   Poprzednia wersja: themes/light-legacy.css */
+:root[data-theme="light"] {
+  --primary-color: #1f6aa8;        /* akcenty, linki, obramowania aktywnych pól */
+  --primary-hover: #2b78bb;
+  --secondary-color: #34495e;      /* tło przycisku drugorzędnego po najechaniu */
+  --background-color: #ffffff;
+  --surface-color: #f8f9fa;
+  --text-color: #2c3e50;
+  --text-secondary: #5f6b6d;
+  --border-color: #ddd;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --error-color: #c0392b;
+  --success-color: #18733f;
+  --warning-color: #f39c12;
+  --input-bg: #ffffff;
+  --button-gradient: linear-gradient(145deg, #2b78bb, #1f6aa8);
+  --button-secondary-bg: #5f6b6d;
+  --button-danger-bg: #c0392b;
+  --button-success-bg: #1e8449;
+}

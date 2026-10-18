@@ -1,10 +1,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import api from '../api';
+import { SESSION_REQUIRED } from '../constants';
 
 function PhotoDetail() {
   const { id } = useParams();
   const [photo, setPhoto] = useState(null);
+
+  useEffect(() => {
+    if (photo) document.title = photo.title;
+  }, [photo]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const navigate = useNavigate();
@@ -14,7 +19,7 @@ function PhotoDetail() {
       const response = await api.get(`/photos/${id}`);
       setPhoto(response.data);
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (err.response?.status === SESSION_REQUIRED) {
         navigate('/login');
       } else if (err.response?.status === 404) {
         setError('Zdjęcie nie zostało znalezione.');
@@ -34,7 +39,7 @@ function PhotoDetail() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>

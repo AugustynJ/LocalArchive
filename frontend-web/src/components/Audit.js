@@ -33,7 +33,7 @@ function Audit() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -91,10 +91,11 @@ function Audit() {
               width: '100%',
               backgroundColor: 'var(--surface-color)'
             }}>
+              <caption className="sr-only">Zdjęcia dodane od ostatniego logowania</caption>
               <thead>
                 <tr style={{ backgroundColor: 'var(--background-color)' }}>
                   {['ID', 'Tytuł', 'Lokalizacja', 'Rok', 'Właściciel', 'Zablokowane', 'Dodano'].map(h => (
-                    <th key={h} style={{ 
+                    <th key={h} scope="col" style={{ 
                       border: '1px solid var(--border-color)', 
                       padding: '12px 8px', 
                       textAlign: 'left', 

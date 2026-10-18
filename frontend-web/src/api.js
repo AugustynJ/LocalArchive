@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { SESSION_REQUIRED } from './constants';
 
 // Determine the API base URL based on environment
 const getApiBaseURL = () => {
@@ -29,8 +30,8 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Jeśli błąd 401 i nie próbowaliśmy jeszcze odświeżać i to nie jest refresh endpoint
-    if (error.response?.status === 401 && 
+    // Jeśli brak/wygaśnięcie sesji (419) i nie próbowaliśmy jeszcze odświeżać i to nie jest refresh endpoint
+    if (error.response?.status === SESSION_REQUIRED && 
         !originalRequest._retry && 
         !originalRequest.url?.includes('/token/refresh')) {
       
@@ -41,7 +42,7 @@ api.interceptors.response.use(
         
         // Próba odświeżenia tokena - używamy axios bezpośrednio
         // żeby uniknąć nieskończonej pętli z interceptorem
-        const refreshResponse = await axios.post(
+        await axios.post(
           `${getApiBaseURL()}/token/refresh`,
           {},
           { 
@@ -57,8 +58,8 @@ api.interceptors.response.use(
       } catch (refreshError) {
         console.error('Token refresh failed:', refreshError);
         
-        // Jeśli refresh też rzucił 401 (bo np. minęła godzina), wylogowujemy usera
-        if (refreshError.response?.status === 401 && window.location.pathname !== '/login') {
+        // Jeśli refresh też zwrócił 419 (bo np. minęła godzina), wylogowujemy usera
+        if (refreshError.response?.status === SESSION_REQUIRED && window.location.pathname !== '/login') {
           console.error("Refresh token expired - redirecting to login");
           window.location.href = '/login'; 
         }

@@ -1,0 +1,21 @@
+/* Poprzedni motyw jasny (do 14.10.2026). Aby wrócić: w App.js zamień import
+   './themes/light.css' na './themes/light-legacy.css'. */
+:root[data-theme="light"] {
+  --primary-color: #2980b9;
+  --primary-hover: #3498db;
+  --secondary-color: #34495e;
+  --background-color: #ffffff;
+  --surface-color: #f8f9fa;
+  --text-color: #2c3e50;
+  --text-secondary: #7f8c8d;
+  --border-color: #ddd;
+  --shadow-color: rgba(0, 0, 0, 0.1);
+  --error-color: #e74c3c;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --input-bg: #ffffff;
+  --button-gradient: linear-gradient(145deg, #3498db, #2980b9);
+  --button-secondary-bg: #7f8c8d;
+  --button-danger-bg: #e74c3c;
+  --button-success-bg: #27ae60;
+}

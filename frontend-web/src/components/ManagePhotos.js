@@ -1,30 +1,31 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import ConfirmDialog from './ConfirmDialog';
+import Notice from './Notice';
 
 function ManagePhotos() {
   const [photos, setPhotos] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [actionMessage, setActionMessage] = useState(null);
+  const [pending, setPending] = useState(null); // { id, name, block } – czeka na potwierdzenie
   const [hoveredPhotoId, setHoveredPhotoId] = useState(null);
   const navigate = useNavigate();
 
-  const handleBlock = async (photoId, photoTitle) => {
-    if (!window.confirm(`Czy na pewno chcesz zablokować zdjęcie "${photoTitle}"?`)) return;
-    try {
-      await api.put(`/admin/photos/${photoId}/block`);
-      setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, is_blocked: true } : p));
-    } catch (err) {
-      alert('Błąd podczas blokowania zdjęcia.');
-    }
-  };
+  const closeDialog = useCallback(() => setPending(null), []);
+  const handleBlock = (id, name) => setPending({ id, name, block: true });
+  const handleUnblock = (id, name) => setPending({ id, name, block: false });
 
-  const handleUnblock = async (photoId, photoTitle) => {
-    if (!window.confirm(`Czy na pewno chcesz odblokować zdjęcie "${photoTitle}"?`)) return;
+  const confirmToggle = async () => {
+    const { id, name, block } = pending;
+    setPending(null);
+    setActionMessage(null);
     try {
-      await api.put(`/admin/photos/${photoId}/unblock`);
-      setPhotos(prev => prev.map(p => p.id === photoId ? { ...p, is_blocked: false } : p));
+      await api.put(`/admin/photos/${id}/${block ? 'block' : 'unblock'}`);
+      setPhotos(prev => prev.map(x => x.id === id ? { ...x, is_blocked: block } : x));
+      setActionMessage({ type: 'success', text: `Zdjęcie „${name}” zostało ${block ? 'zablokowane' : 'odblokowane'}.` });
     } catch (err) {
-      alert('Błąd podczas odblokowywania zdjęcia.');
+      setActionMessage({ type: 'error', text: `Błąd podczas ${block ? 'blokowania' : 'odblokowywania'} zdjęcia. Spróbuj ponownie.` });
     }
   };
 
@@ -52,7 +53,7 @@ function ManagePhotos() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -64,6 +65,16 @@ function ManagePhotos() {
     <div className="page-container with-header fade-in">
       <div className="content-wrapper wide">
         <h1>📷 Zarządzanie zdjęciami</h1>
+        <Notice message={actionMessage} />
+        <ConfirmDialog
+          open={!!pending}
+          title={pending?.block ? 'Zablokować zdjęcie?' : 'Odblokować zdjęcie?'}
+          message={pending ? `Czy na pewno chcesz ${pending.block ? 'zablokować' : 'odblokować'} zdjęcie „${pending.name}”?` : ''}
+          confirmLabel={pending?.block ? 'Zablokuj' : 'Odblokuj'}
+          danger={!!pending?.block}
+          onConfirm={confirmToggle}
+          onCancel={closeDialog}
+        />
         
         <div style={{ 
           color: 'var(--text-secondary)', 
@@ -93,10 +104,11 @@ function ManagePhotos() {
               width: '100%',
               backgroundColor: 'var(--surface-color)'
             }}>
+              <caption className="sr-only">Wszystkie zdjęcia</caption>
               <thead>
                 <tr style={{ backgroundColor: 'var(--background-color)' }}>
                   {['ID', 'Tytuł', 'Lokalizacja', 'Rok', 'Właściciel', 'Zablokowane', 'Dodano', 'Blokada'].map(h => (
-                    <th key={h} style={{ 
+                    <th key={h} scope="col" style={{ 
                       border: '1px solid var(--border-color)', 
                       padding: '12px 8px', 
                       textAlign: 'left', 
@@ -181,14 +193,17 @@ function ManagePhotos() {
                         }
                         onMouseEnter={() => setHoveredPhotoId(photo.id)}
                         onMouseLeave={() => setHoveredPhotoId(null)}
+                        onFocus={() => setHoveredPhotoId(photo.id)}
+                        onBlur={() => setHoveredPhotoId(null)}
+                        aria-label={`${photo.is_blocked ? 'Odblokuj' : 'Zablokuj'} zdjęcie ${photo.title}`}
                         className="btn"
                         style={{
                           fontSize: '12px',
                           padding: '6px 12px',
                           minWidth: '100px',
                           backgroundColor: photo.is_blocked
-                            ? (hoveredPhotoId === photo.id ? 'var(--success-color)' : 'var(--text-secondary)')
-                            : 'var(--error-color)',
+                            ? (hoveredPhotoId === photo.id ? 'var(--button-success-bg)' : 'var(--button-secondary-bg)')
+                            : 'var(--button-danger-bg)',
                           color: 'white',
                           border: 'none'
                         }}

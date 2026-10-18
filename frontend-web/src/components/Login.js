@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import api from '../api';
-import { useNavigate } from 'react-router-dom';
+import { SESSION_REQUIRED } from '../constants';
+import { useNavigate, useLocation } from 'react-router-dom';
+import PasswordInput from './PasswordInput';
 
 function Login() {
   const [email, setEmail] = useState('');
@@ -8,6 +10,18 @@ function Login() {
   const [emailError, setEmailError] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const navigate = useNavigate();
+  const location = useLocation();
+  const [registered] = useState(Boolean(location.state?.registered));
+  const [formError, setFormError] = useState(
+    location.state?.logoutFailed ? 'Wystąpił błąd podczas wylogowywania. Sesja wygaśnie automatycznie.' : ''
+  );
+
+  useEffect(() => {
+    // Komunikat ma się pokazać tylko raz – czyścimy stan, żeby nie wracał po odświeżeniu
+    if (location.state?.registered || location.state?.logoutFailed) {
+      navigate(location.pathname, { replace: true, state: null });
+    }
+  }, [location, navigate]);
 
   useEffect(() => {
     api.get('/user/info')
@@ -21,6 +35,7 @@ function Login() {
     // Clear previous errors
     setEmailError('');
     setPasswordError('');
+    setFormError('');
     
     // Frontend validation
     let hasErrors = false;
@@ -50,18 +65,21 @@ function Login() {
     } catch (err) {
       if (err.response?.status === 400) {
         if (err.response.data?.message?.includes('Email and password')) {
-          alert('Email i hasło są wymagane');
+          setFormError('Email i hasło są wymagane');
         } else if (err.response.data?.message?.includes('Invalid email format')) {
           setEmailError('Nieprawidłowy format email');
         } else {
-          alert(err.response.data?.message || 'Błędne dane');
+          setFormError(err.response.data?.message || 'Błędne dane');
         }
-      } else if (err.response?.status === 401) {
-        alert('Nieprawidłowe dane logowania');
+      } else if (err.response?.status === SESSION_REQUIRED) {
+        setFormError('Nieprawidłowe dane logowania');
       } else if (err.response?.status === 403) {
-        alert('Konto zostało zablokowane');
+        setFormError('Konto zostało zablokowane');
       } else {
-        alert('Błąd logowania');
+        // 429 = limit prób logowania (nginx), brak odpowiedzi = błąd sieci
+        setFormError(err.response?.status === 429
+          ? 'Zbyt wiele prób logowania. Spróbuj ponownie za minutę.'
+          : !err.response ? 'Brak połączenia z serwerem. Spróbuj ponownie.' : 'Błąd logowania');
       }
     }
   };
@@ -75,31 +93,39 @@ function Login() {
       <div className="content-wrapper">
         <div className="form-container">
           <h1>Logowanie</h1>
+          {registered && !formError && (
+            <div className="success-message" role="status">✔️ Twoje konto zostało poprawnie utworzone</div>
+          )}
+          {formError && <div className="error-banner" role="alert">⚠️ {formError}</div>}
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <input 
+              <label htmlFor="login-email" className="field-label">Email</label>
+              <input
+                id="login-email"
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? 'login-email-error' : undefined} 
                 className="input-field"
                 type="email" 
                 value={email}
                 onChange={e => setEmail(e.target.value)} 
-                placeholder="Email" 
                 maxLength="50"
                 required
               />
-              {emailError && <div className="error-message">⚠️ {emailError}</div>}
+              {emailError && <div id="login-email-error" className="error-message">⚠️ {emailError}</div>}
             </div>
             
             <div className="form-group">
-              <input 
-                className="input-field"
-                type="password" 
+              <label htmlFor="login-password" className="field-label">Hasło</label>
+              <PasswordInput
+                id="login-password"
+                aria-invalid={!!passwordError}
+                aria-describedby={passwordError ? 'login-password-error' : undefined} 
                 value={password}
                 onChange={e => setPassword(e.target.value)} 
-                placeholder="Hasło" 
                 maxLength="127"
                 required
               />
-              {passwordError && <div className="error-message">⚠️ {passwordError}</div>}
+              {passwordError && <div id="login-password-error" className="error-message">⚠️ {passwordError}</div>}
             </div>
             
             <div className="button-group">

@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { YEAR_MIN, YEAR_MAX } from '../constants';
+import ConfirmDialog from './ConfirmDialog';
+import Notice from './Notice';
 
 function MyPhotos() {
   const navigate = useNavigate();
@@ -9,7 +12,8 @@ function MyPhotos() {
   const [editingPhoto, setEditingPhoto] = useState(null);
   const [editForm, setEditForm] = useState({ title: '', location: '', photo_year: '' });
   const [editErrors, setEditErrors] = useState([]);
-  const [editSuccess, setEditSuccess] = useState('');
+  const [pageMessage, setPageMessage] = useState(null); // komunikat na liście po zapisie/usunięciu
+  const [confirmDelete, setConfirmDelete] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
@@ -42,22 +46,38 @@ function MyPhotos() {
       photo_year: photo.photo_year ?? '',
     });
     setEditErrors([]);
-    setEditSuccess('');
+    setPageMessage(null);
   };
 
   const closeEdit = () => {
     setEditingPhoto(null);
     setEditErrors([]);
-    setEditSuccess('');
   };
 
+  // Po zapisie/usunięciu: zamknij okno edycji i pokaż komunikat nad listą zdjęć
+  const finishWithMessage = (text) => {
+    closeEdit();
+    setPageMessage({ type: 'success', text });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const closeConfirm = useCallback(() => setConfirmDelete(false), []);
+
+  // Esc zamyka okno edycji (gdy nie jest otwarte potwierdzenie usunięcia – ono obsługuje Esc samo)
+  useEffect(() => {
+    if (!editingPhoto || confirmDelete) return;
+    const onKey = (e) => { if (e.key === 'Escape') { setEditingPhoto(null); setEditErrors([]); } };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [editingPhoto, confirmDelete]);
+
   const handleDelete = async () => {
-    if (!window.confirm(`Czy na pewno chcesz usunąć "${editingPhoto.title}"?`)) return;
+    setConfirmDelete(false);
     setDeleting(true);
     try {
       await api.delete(`/photos/${editingPhoto.id}`);
       setPhotos(prev => prev.filter(p => p.id !== editingPhoto.id));
-      closeEdit();
+      finishWithMessage(`Zdjęcie „${editingPhoto.title}” zostało usunięte.`);
     } catch (err) {
       if (err.response?.data?.error) {
         setEditErrors([err.response.data.error]);
@@ -76,6 +96,8 @@ function MyPhotos() {
     if (!editForm.location.trim()) errors.push('Lokalizacja jest wymagana.');
     if (editForm.photo_year && !/^\d+$/.test(String(editForm.photo_year))) {
       errors.push('Rok musi być liczbą całkowitą.');
+    } else if (editForm.photo_year && (parseInt(editForm.photo_year) < YEAR_MIN || parseInt(editForm.photo_year) > YEAR_MAX)) {
+      errors.push(`Rok musi być z zakresu ${YEAR_MIN}–${YEAR_MAX}.`);
     }
     if (errors.length > 0) {
       setEditErrors(errors);
@@ -91,8 +113,7 @@ function MyPhotos() {
       };
       await api.put(`/photos/${editingPhoto.id}`, payload);
       setPhotos(prev => prev.map(p => p.id === editingPhoto.id ? { ...p, ...payload } : p));
-      setEditSuccess('Zmiany zostały zapisane.');
-      setEditErrors([]);
+      finishWithMessage(`Zmiany w zdjęciu „${payload.title}” zostały zapisane.`);
     } catch (err) {
       if (err.response?.data?.error) {
         setEditErrors([err.response.data.error]);
@@ -108,7 +129,7 @@ function MyPhotos() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -120,6 +141,7 @@ function MyPhotos() {
     <div className="page-container with-header fade-in">
       <div className="content-wrapper wide">
         <h1>📸 Moje zdjęcia</h1>
+        <Notice message={pageMessage} />
 
         <div style={{ 
           display: 'grid', 
@@ -191,6 +213,16 @@ function MyPhotos() {
 
       </div>
 
+      <ConfirmDialog
+        open={confirmDelete && !!editingPhoto}
+        title="Usunąć zdjęcie?"
+        message={editingPhoto ? `Czy na pewno chcesz usunąć zdjęcie „${editingPhoto.title}”? Tej operacji nie można cofnąć.` : ''}
+        confirmLabel="Usuń"
+        danger
+        onConfirm={handleDelete}
+        onCancel={closeConfirm}
+      />
+
       {editingPhoto && (
         <div style={{
           position: 'fixed', top: 0, left: 0, width: '100%', height: '100%',
@@ -198,17 +230,20 @@ function MyPhotos() {
           alignItems: 'center', justifyContent: 'center', zIndex: 1000,
           backdropFilter: 'blur(5px)'
         }}>
-          <div style={{
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="edit-photo-title"
+            style={{
             background: 'var(--surface-color)',
             padding: '30px',
             borderRadius: '12px',
-            minWidth: '400px',
             maxWidth: '500px',
             width: '90%',
             boxShadow: '0 20px 40px var(--shadow-color)',
             border: '1px solid var(--border-color)'
           }}>
-            <h2 style={{ 
+            <h2 id="edit-photo-title" style={{ 
               color: 'var(--text-color)', 
               marginBottom: '20px',
               textAlign: 'center'
@@ -223,55 +258,44 @@ function MyPhotos() {
                 ))}
               </div>
             )}
-            {editSuccess && (
-              <div style={{ 
-                color: 'var(--success-color)', 
-                fontWeight: 'bold', 
-                textAlign: 'center', 
-                marginBottom: '20px',
-                padding: '10px',
-                backgroundColor: 'rgba(39, 174, 96, 0.1)',
-                borderRadius: '8px',
-                border: '1px solid var(--success-color)'
-              }}>
-                ✔️ {editSuccess}
-              </div>
-            )}
 
             <form onSubmit={handleEditSubmit}>
               <div className="form-group">
+                <label htmlFor="edit-title" className="field-label">Nazwa</label>
                 <input
+                  id="edit-title"
                   className="input-field"
                   type="text"
                   value={editForm.title}
                   onChange={e => setEditForm(f => ({ ...f, title: e.target.value }))}
-                  placeholder="Nazwa"
                   maxLength={255}
                   required
                 />
               </div>
               
               <div className="form-group">
+                <label htmlFor="edit-location" className="field-label">Lokalizacja</label>
                 <input
+                  id="edit-location"
                   className="input-field"
                   type="text"
                   value={editForm.location}
                   onChange={e => setEditForm(f => ({ ...f, location: e.target.value }))}
-                  placeholder="Lokalizacja"
                   maxLength={255}
                   required
                 />
               </div>
               
               <div className="form-group">
+                <label htmlFor="edit-year" className="field-label">Rok (opcjonalnie)</label>
                 <input
+                  id="edit-year"
                   className="input-field"
                   type="number"
                   value={editForm.photo_year}
                   onChange={e => setEditForm(f => ({ ...f, photo_year: e.target.value }))}
-                  placeholder="Rok (opcjonalnie)"
-                  min={1}
-                  max={9999}
+                  min={YEAR_MIN}
+                  max={YEAR_MAX}
                 />
               </div>
               
@@ -284,11 +308,11 @@ function MyPhotos() {
               }}>
                 <button
                   type="button"
-                  onClick={handleDelete}
+                  onClick={() => setConfirmDelete(true)}
                   disabled={deleting || saving}
                   className="btn"
                   style={{ 
-                    backgroundColor: 'var(--error-color)',
+                    backgroundColor: 'var(--button-danger-bg)',
                     color: 'white',
                     border: 'none'
                   }}

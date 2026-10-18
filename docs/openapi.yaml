@@ -1,0 +1,966 @@
+openapi: 3.1.0
+info:
+  title: LocalArchive (OKNO) – API archiwum zdjęć
+  version: 1.0.0
+  description: |
+    REST API aplikacji LocalArchive – archiwum zdjęć z metadanymi (tytuł,
+    lokalizacja, rok), kontami użytkowników z rolami oraz moderacją treści.
+    Projekt ZAI 26Z realizowany jako temat indywidualny; dokument opisuje
+    rzeczywiste zachowanie backendu (`backend-web/app.py`).
+
+    ## Zasady ogólne
+    - Wszystkie ścieżki API mają prefiks `/api/v1`.
+    - Treść żądań i odpowiedzi: `application/json` (UTF-8). Wyjątki: dodawanie
+      zdjęcia (`multipart/form-data`) i pobieranie pliku zdjęcia (obraz).
+    - Znaczniki czasu: ISO 8601 ze strefą czasową, np. `2026-10-14T15:12:43+00:00`.
+    - Identyfikatory (`id`) to liczby całkowite.
+    - Adresy e-mail są normalizowane do małych liter.
+
+    ## Dwa poziomy uwierzytelniania
+    1. **Basic Auth (nginx)** – obejmuje całą aplikację, łącznie z API i plikami
+       zdjęć. Bez poprawnego nagłówka `Authorization: Basic …` serwer zwraca 401
+       z nagłówkiem `WWW-Authenticate: Basic realm="LocalArchive"`, zanim żądanie
+       dotrze do backendu. Nagłówek nie jest przekazywany do aplikacji.
+    2. **Sesja aplikacji (JWT w ciasteczkach)** – `POST /api/v1/login` ustawia
+       ciasteczka `HttpOnly`, `Secure`, `SameSite=Lax`:
+       - `access_token_cookie` – token dostępu, ważny **15 minut**, ścieżka `/`;
+       - `refresh_token_cookie` – token odświeżania, ważny **60 minut**, ścieżka
+         `/api/v1/token/refresh`.
+
+       Tokeny są dodatkowo zapisywane w Redis (lista dozwolonych); wylogowanie,
+       zmiana lub reset hasła oraz zablokowanie konta usuwają je natychmiast.
+       Przy niedostępnym Redis serwer odrzuca wszystkie tokeny (401), a logowanie
+       i odświeżanie zwracają 503.
+
+    ## Kody 401 i 419
+    Każde żądanie może zakończyć się kodem **401** z nagłówkiem `WWW-Authenticate: Basic` –
+    to odpowiedź nginx przy braku/błędnych danych Basic Auth. Błędy uwierzytelniania
+    **aplikacji** (brak, wygaśnięcie lub unieważnienie sesji, błędne hasło konta) mają kod
+    **419**. Rozdzielenie jest konieczne: przeglądarki traktują każde 401 na żądanie
+    wysłane z danymi Basic Auth jako ich odrzucenie, zapominają je i ponownie wyświetlają
+    okno logowania.
+
+    ## Role
+    `viewer` < `editor` < `admin`. Rola jest zawsze sprawdzana w bazie danych
+    przy każdym żądaniu (nie na podstawie tokenu). Rejestracja tworzy konto `viewer`.
+
+    ## Format błędów
+    - Błędy aplikacji: `{"error": "…"}`, błędy walidacji pól: `{"errors": ["…", …]}`.
+    - Błędy logowania i sesji (`/login`, brak/wygaśnięcie tokenu, kod 419): `{"message": "…"}`.
+    - Błędy nginx (401 Basic Auth, 413 > 2 MB, 429 limit zapytań) mają treść HTML.
+
+    ## Limity
+    - Limit zapytań na adres IP (nginx): 20/s dla całej aplikacji oraz 10/min dla
+      `/login`, `/register` i `/forgot_password` – przekroczenie: 429.
+    - Rozmiar pliku zdjęcia: maks. 1 MB (413).
+servers:
+  - url: https://localarchive-421271501355.europe-central2.run.app
+    description: Wdrożenie produkcyjne (Google Cloud Run, europe-central2)
+  - url: http://localhost:8080
+    description: Lokalnie (docker compose)
+
+security:
+  - basicAuth: []
+
+tags:
+  - name: system
+  - name: auth
+    description: Rejestracja, logowanie, sesja i hasło
+  - name: photos
+    description: Zdjęcia i ich metadane
+  - name: admin
+    description: Moderacja zdjęć i zarządzanie użytkownikami (rola `admin`)
+  - name: password-reset
+    description: |
+      Reset hasła przez e-mail. **Wyłączony w interfejsie** (ekran „Strona
+      w przebudowie”); endpointy działają, ale bez skonfigurowanego SMTP wysyłka
+      kończy się kodem 500.
+
+paths:
+  /api/v1/healthcheck:
+    get:
+      tags: [system]
+      summary: Sprawdzenie dostępności aplikacji
+      responses:
+        '200':
+          description: Aplikacja działa
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status]
+                properties:
+                  status: { type: string, const: ok }
+        '401': { $ref: '#/components/responses/BasicAuthRequired' }
+
+  # ───────────────────────────── auth ─────────────────────────────
+  /api/v1/register:
+    post:
+      tags: [auth]
+      summary: Rejestracja konta (rola `viewer`)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Konto utworzone
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: User registered successfully }
+        '400': { $ref: '#/components/responses/ValidationErrors' }
+        '401': { $ref: '#/components/responses/BasicAuthRequired' }
+        '409':
+          description: Konto z tym adresem e-mail już istnieje
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Email already exists }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/login:
+    post:
+      tags: [auth]
+      summary: Logowanie
+      description: |
+        Ustawia ciasteczka `access_token_cookie` i `refresh_token_cookie`
+        (patrz „Dwa poziomy uwierzytelniania”). Odpowiedź dla nieistniejącego
+        konta i błędnego hasła jest identyczna.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Zalogowano
+          headers:
+            Set-Cookie:
+              description: '`access_token_cookie` i `refresh_token_cookie` (HttpOnly; Secure; SameSite=Lax)'
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Login successful }
+        '400':
+          description: Brak danych, brak e-maila lub hasła albo zły format e-maila
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Message'
+                  - $ref: '#/components/schemas/Error'
+              example: { message: Invalid email format }
+        '419':
+          description: Błędny e-mail lub hasło
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Invalid credentials }
+        '403':
+          description: Konto zablokowane
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: User is blocked }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '503': { $ref: '#/components/responses/SessionUnavailable' }
+
+  /api/v1/logout:
+    post:
+      tags: [auth]
+      summary: Wylogowanie – unieważnia wszystkie sesje użytkownika
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Wylogowano; ciasteczka zostają usunięte
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Logout successful }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+
+  /api/v1/token/refresh:
+    post:
+      tags: [auth]
+      summary: Nowy token dostępu na podstawie tokenu odświeżania
+      description: Wymaga ciasteczka `refresh_token_cookie`. Usuwa wcześniejsze tokeny dostępu użytkownika.
+      security: [ { basicAuth: [], refreshCookieAuth: [] } ]
+      responses:
+        '200':
+          description: Ustawiono nowe ciasteczko `access_token_cookie`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Token refreshed successfully }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/UserBlocked' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '503': { $ref: '#/components/responses/SessionUnavailable' }
+
+  /api/v1/user/info:
+    get:
+      tags: [auth]
+      summary: Dane zalogowanego użytkownika
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Dane konta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/UserInfo' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/UserBlocked' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /api/v1/user/update_password:
+    post:
+      tags: [auth]
+      summary: Zmiana hasła zalogowanego użytkownika
+      description: |
+        Nowe hasło musi spełniać politykę haseł (patrz `PasswordPolicy`).
+        Po zmianie wszystkie pozostałe sesje użytkownika są unieważniane, a bieżąca
+        otrzymuje nowe ciasteczka.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordUpdateRequest' }
+      responses:
+        '200':
+          description: Hasło zmienione
+          headers:
+            Set-Cookie:
+              description: Nowe `access_token_cookie` i `refresh_token_cookie`
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Password updated successfully }
+        '400': { $ref: '#/components/responses/ValidationErrors' }
+        '419':
+          description: Bieżące hasło jest niepoprawne albo brak/nieważny token
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: '#/components/schemas/Error'
+                  - $ref: '#/components/schemas/TokenError'
+              example: { error: Current password is incorrect }
+        '403': { $ref: '#/components/responses/UserBlocked' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ───────────────────────────── photos ─────────────────────────────
+  /api/v1/photos:
+    get:
+      tags: [photos]
+      summary: Lista niezablokowanych zdjęć
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zdjęcia (bez zablokowanych)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/Photo' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+
+  /api/v1/photos/add:
+    post:
+      tags: [photos]
+      summary: Dodanie zdjęcia (rola `editor` lub `admin`)
+      description: |
+        Plik jest zapisywany pod losową nazwą `<uuid>.<rozszerzenie>` (oryginalna
+        nazwa nie jest używana). Dozwolone formaty: PNG, JPEG, GIF – zawartość pliku
+        jest sprawdzana i musi odpowiadać rozszerzeniu. Maksymalny rozmiar: 1 MB.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema: { $ref: '#/components/schemas/PhotoUpload' }
+      responses:
+        '201':
+          description: Zdjęcie zapisane
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/PhotoCreated' }
+        '400':
+          description: |
+            Brak pliku, tytułu lub lokalizacji; niedozwolone rozszerzenie; plik nie jest
+            obrazem zgodnym z rozszerzeniem; rok nie jest liczbą całkowitą
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: File is not a valid image of the declared type }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '413':
+          description: Plik większy niż 1 MB (odpowiedź JSON lub HTML – zależnie od miejsca odrzucenia)
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: File too large. Maximum size is 1 MB }
+        '422': { $ref: '#/components/responses/YearOutOfRange' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/photos/my_photos:
+    get:
+      tags: [photos]
+      summary: Zdjęcia zalogowanego użytkownika, także zablokowane (rola `editor` lub `admin`)
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zdjęcia użytkownika
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PhotoWithStatus' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /api/v1/photos/{photoId}:
+    parameters:
+      - $ref: '#/components/parameters/PhotoId'
+    get:
+      tags: [photos]
+      summary: Odczyt metadanych zdjęcia
+      description: Zablokowane zdjęcie zwraca 404.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zdjęcie
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Photo' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+    put:
+      tags: [photos]
+      summary: Edycja metadanych zdjęcia (właściciel lub `admin`)
+      description: |
+        Zastępuje tytuł, lokalizację i rok. Zablokowane zdjęcie może edytować tylko
+        administrator (dla innych: 404).
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PhotoUpdate' }
+      responses:
+        '200':
+          description: Zapisano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Photo updated successfully }
+        '400':
+          description: Brak danych, tytułu lub lokalizacji; rok nie jest liczbą całkowitą
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Title is required }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+        '422': { $ref: '#/components/responses/YearOutOfRange' }
+        '500': { $ref: '#/components/responses/ServerError' }
+    delete:
+      tags: [photos]
+      summary: Usunięcie zdjęcia i pliku (właściciel lub `admin`)
+      description: 'Zablokowane zdjęcie może usunąć tylko administrator (dla innych: 404).'
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Usunięto
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Photo deleted successfully }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/media/{filename}:
+    parameters:
+      - name: filename
+        in: path
+        required: true
+        description: Nazwa pliku z pola `filename` zdjęcia
+        schema: { type: string, pattern: '^[0-9a-f]{32}\.(png|jpg|jpeg|gif)$', example: 8aac2df9e80549c2b431746d80db61bc.jpg }
+    get:
+      tags: [photos]
+      summary: Pobranie pliku zdjęcia
+      description: |
+        Plik zablokowanego zdjęcia mogą pobrać tylko jego właściciel i administrator
+        (dla innych: 404). Nazwy zawierające `/`, `\` lub `..` są odrzucane (400).
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Plik obrazu
+          content:
+            image/png: { schema: { type: string, contentMediaType: image/png } }
+            image/jpeg: { schema: { type: string, contentMediaType: image/jpeg } }
+            image/gif: { schema: { type: string, contentMediaType: image/gif } }
+        '400':
+          description: Niedozwolona nazwa pliku
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Invalid filename }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+
+  # ───────────────────────────── admin ─────────────────────────────
+  /api/v1/admin/test:
+    get:
+      tags: [admin]
+      summary: Test dostępu administratora
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Użytkownik ma rolę `admin`
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Admin access successful }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /api/v1/admin/audit:
+    get:
+      tags: [admin]
+      summary: Zdjęcia dodane od poprzedniego logowania administratora
+      description: |
+        Zwraca zdjęcia z `created_at` ≥ `last_last_login` bieżącego administratora
+        (wszystkie, jeśli to pierwsze logowanie), od najnowszych, łącznie z zablokowanymi.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zdjęcia
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PhotoWithStatus' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /api/v1/admin/manage_photos:
+    get:
+      tags: [admin]
+      summary: Wszystkie zdjęcia, także zablokowane (od najnowszych)
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zdjęcia
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/PhotoWithStatus' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+
+  /api/v1/admin/photos/{photoId}/block:
+    parameters:
+      - $ref: '#/components/parameters/PhotoId'
+    put:
+      tags: [admin]
+      summary: Zablokowanie zdjęcia
+      description: Zablokowane zdjęcie znika z listy i odczytu; plik widzą tylko właściciel i administrator.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zablokowano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Photo 3 blocked }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/admin/photos/{photoId}/unblock:
+    parameters:
+      - $ref: '#/components/parameters/PhotoId'
+    put:
+      tags: [admin]
+      summary: Odblokowanie zdjęcia
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Odblokowano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Photo 3 unblocked }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/PhotoNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/admin/manage_users:
+    get:
+      tags: [admin]
+      summary: Lista użytkowników (według id)
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Użytkownicy (bez haseł i ich skrótów)
+          content:
+            application/json:
+              schema:
+                type: array
+                items: { $ref: '#/components/schemas/AdminUser' }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+    put:
+      tags: [admin]
+      summary: Zbiorcza zmiana ról użytkowników
+      description: Zmiany są zapisywane razem – jeśli którakolwiek jest niepoprawna, żadna nie zostaje zapisana.
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RoleChanges' }
+      responses:
+        '200':
+          description: Zapisano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Updated 2 user(s) }
+        '400':
+          description: Brak zmian, pusta lista, niepoprawny wpis lub nieistniejący użytkownik
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: '#/components/schemas/Error'
+                  - type: object
+                    properties:
+                      details: { type: array, items: { type: string } }
+              example: { error: Some changes were invalid, details: ['User 99 not found'] }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/admin/users/{userId}/block:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    put:
+      tags: [admin]
+      summary: Zablokowanie użytkownika
+      description: |
+        Natychmiast unieważnia wszystkie sesje blokowanego użytkownika.
+        Administrator nie może zablokować własnego konta (400).
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Zablokowano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: User 2 blocked }
+        '400':
+          description: Próba zablokowania własnego konta
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Cannot block yourself }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/admin/users/{userId}/unblock:
+    parameters:
+      - $ref: '#/components/parameters/UserId'
+    put:
+      tags: [admin]
+      summary: Odblokowanie użytkownika
+      security: [ { basicAuth: [], cookieAuth: [] } ]
+      responses:
+        '200':
+          description: Odblokowano
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: User 2 unblocked }
+        '419': { $ref: '#/components/responses/TokenInvalid' }
+        '403': { $ref: '#/components/responses/Forbidden' }
+        '404': { $ref: '#/components/responses/UserNotFound' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  # ───────────────────────────── password-reset ─────────────────────────────
+  /api/v1/forgot_password:
+    post:
+      tags: [password-reset]
+      summary: Wysłanie linku resetującego hasło
+      description: |
+        Zawsze zwraca tę samą odpowiedź 200, niezależnie od tego, czy konto istnieje.
+        Link (ważny 15 minut) prowadzi do `/reset_password/{token}` aplikacji.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              properties:
+                email: { type: string, format: email }
+      responses:
+        '200':
+          description: Żądanie przyjęte
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: If that email exists, a reset link has been sent. }
+        '400':
+          description: Brak adresu e-mail
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+              example: { error: Email is required }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+  /api/v1/forgot_password/{token}:
+    parameters:
+      - name: token
+        in: path
+        required: true
+        description: Jednorazowy token z linku w wiadomości e-mail
+        schema: { type: string }
+    get:
+      tags: [password-reset]
+      summary: Sprawdzenie ważności tokenu resetu
+      responses:
+        '200':
+          description: Token ważny
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Token is valid }
+        '404': { $ref: '#/components/responses/ResetTokenInvalid' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+    post:
+      tags: [password-reset]
+      summary: Ustawienie nowego hasła
+      description: Token jest jednorazowy; po resecie wszystkie sesje użytkownika są unieważniane.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/ResetPasswordRequest' }
+      responses:
+        '200':
+          description: Hasło zmienione
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Message' }
+              example: { message: Password has been reset successfully }
+        '400': { $ref: '#/components/responses/ValidationErrors' }
+        '404': { $ref: '#/components/responses/ResetTokenInvalid' }
+        '429': { $ref: '#/components/responses/TooManyRequests' }
+        '500': { $ref: '#/components/responses/ServerError' }
+
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: Dostęp do całej aplikacji (nginx). Dane przekazywane osobno.
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: access_token_cookie
+      description: Token dostępu JWT (15 min) ustawiany przez `POST /api/v1/login`.
+    refreshCookieAuth:
+      type: apiKey
+      in: cookie
+      name: refresh_token_cookie
+      description: Token odświeżania JWT (60 min), wysyłany tylko na `/api/v1/token/refresh`.
+
+  parameters:
+    PhotoId:
+      name: photoId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+    UserId:
+      name: userId
+      in: path
+      required: true
+      schema: { type: integer, minimum: 1 }
+
+  schemas:
+    Role:
+      type: string
+      enum: [admin, editor, viewer]
+
+    PasswordPolicy:
+      type: string
+      format: password
+      minLength: 8
+      maxLength: 127
+      description: |
+        Co najmniej 8 znaków (maks. 127), w tym mała i wielka litera, cyfra
+        oraz znak specjalny. Przechowywane wyłącznie jako skrót Argon2id.
+
+    RegisterRequest:
+      type: object
+      required: [first_name, last_name, email, password]
+      properties:
+        first_name: { type: string, minLength: 1, maxLength: 50 }
+        last_name: { type: string, minLength: 1, maxLength: 50 }
+        email: { type: string, format: email, maxLength: 50 }
+        password: { $ref: '#/components/schemas/PasswordPolicy' }
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      properties:
+        email: { type: string, format: email, maxLength: 50 }
+        password: { type: string, format: password, maxLength: 127 }
+
+    PasswordUpdateRequest:
+      type: object
+      required: [current_password, new_password]
+      properties:
+        current_password: { type: string, format: password }
+        new_password: { $ref: '#/components/schemas/PasswordPolicy' }
+
+    ResetPasswordRequest:
+      type: object
+      required: [new_password, repeat_password]
+      description: Oba pola muszą być identyczne.
+      properties:
+        new_password: { $ref: '#/components/schemas/PasswordPolicy' }
+        repeat_password: { type: string, format: password }
+
+    UserInfo:
+      type: object
+      required: [id, first_name, last_name, email, role, role_from_token, is_blocked, last_login_date, last_last_login]
+      properties:
+        id: { type: integer }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        role_from_token:
+          $ref: '#/components/schemas/Role'
+          description: Rola zapisana w tokenie w chwili logowania (informacyjnie; uprawnienia sprawdzane są w bazie)
+        is_blocked: { type: boolean }
+        last_login_date: { type: [string, 'null'], format: date-time }
+        last_last_login:
+          type: [string, 'null']
+          format: date-time
+          description: Poprzednie logowanie (aktualizowane tylko dla administratorów)
+
+    AdminUser:
+      type: object
+      required: [id, first_name, last_name, email, role, is_blocked, last_login_date]
+      properties:
+        id: { type: integer }
+        first_name: { type: string }
+        last_name: { type: string }
+        email: { type: string, format: email }
+        role: { $ref: '#/components/schemas/Role' }
+        is_blocked: { type: boolean }
+        last_login_date: { type: [string, 'null'], format: date-time }
+
+    RoleChanges:
+      type: object
+      required: [changes]
+      properties:
+        changes:
+          type: array
+          minItems: 1
+          items:
+            type: object
+            required: [id, role]
+            properties:
+              id: { type: integer }
+              role: { $ref: '#/components/schemas/Role' }
+      example: { changes: [ { id: 2, role: editor } ] }
+
+    Year:
+      type: [integer, 'null']
+      minimum: 1
+      maximum: 2026
+      description: Rok wykonania zdjęcia (1–2026) lub brak
+
+    Photo:
+      type: object
+      required: [id, title, filename, location, photo_year, owner_id, created_at]
+      properties:
+        id: { type: integer }
+        title: { type: string, maxLength: 255 }
+        filename:
+          type: string
+          description: Nazwa pliku do pobrania przez `/api/v1/media/{filename}`
+        location: { type: [string, 'null'], maxLength: 255 }
+        photo_year: { $ref: '#/components/schemas/Year' }
+        owner_id: { type: integer }
+        created_at: { type: string, format: date-time }
+
+    PhotoWithStatus:
+      allOf:
+        - $ref: '#/components/schemas/Photo'
+        - type: object
+          required: [is_blocked]
+          properties:
+            is_blocked: { type: boolean }
+
+    PhotoUpload:
+      type: object
+      required: [file, title, location]
+      properties:
+        file:
+          type: string
+          contentMediaType: application/octet-stream
+          description: Plik PNG, JPEG lub GIF, maks. 1 MB
+        title: { type: string, minLength: 1, maxLength: 255 }
+        location: { type: string, minLength: 1, maxLength: 255 }
+        year:
+          type: string
+          pattern: '^[0-9]+$'
+          description: Opcjonalny rok (1–2026), przesyłany jako tekst pola formularza
+
+    PhotoUpdate:
+      type: object
+      required: [title, location]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 255 }
+        location: { type: string, minLength: 1, maxLength: 255 }
+        photo_year: { $ref: '#/components/schemas/Year' }
+
+    PhotoCreated:
+      type: object
+      required: [message, id, filename]
+      properties:
+        message: { type: string, const: Photo uploaded successfully }
+        id: { type: integer }
+        filename: { type: string }
+
+    Message:
+      type: object
+      required: [message]
+      properties:
+        message: { type: string }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+    ValidationErrors:
+      type: object
+      required: [errors]
+      properties:
+        errors:
+          type: array
+          items: { type: string }
+      example: { errors: [ Password must contain at least one uppercase letter ] }
+
+    TokenError:
+      type: object
+      required: [message]
+      properties:
+        message:
+          type: string
+          enum: [Missing token, Token has expired, Invalid token, Token has been revoked]
+
+  responses:
+    BasicAuthRequired:
+      description: Brak lub błędne dane Basic Auth (odpowiedź nginx, treść HTML)
+      headers:
+        WWW-Authenticate:
+          schema: { type: string, example: 'Basic realm="LocalArchive"' }
+    TokenInvalid:
+      description: |
+        Brak, wygaśnięcie lub unieważnienie tokenu sesji (także gdy Redis jest
+        niedostępny).
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/TokenError' }
+          example: { message: Token has expired }
+    Forbidden:
+      description: Niewystarczająca rola, brak uprawnień do zasobu lub konto zablokowane
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Insufficient permissions }
+    UserBlocked:
+      description: Konto zablokowane
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: User is blocked }
+    UserNotFound:
+      description: Użytkownik nie istnieje (np. usunięty po zalogowaniu)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: User not found }
+    PhotoNotFound:
+      description: Zdjęcie nie istnieje lub jest zablokowane i niedostępne dla użytkownika
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Photo not found }
+    ResetTokenInvalid:
+      description: Token resetu nie istnieje lub wygasł (15 minut)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Invalid or expired token }
+    ValidationErrors:
+      description: Błędy walidacji pól (`errors`) albo pojedynczy błąd (`error`)
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/ValidationErrors'
+              - $ref: '#/components/schemas/Error'
+    YearOutOfRange:
+      description: Rok spoza przedziału 1–2026 (odrzucenie jest zapisywane w logu)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }
+          example: { error: Year must be between 1 and 2026 }
+    TooManyRequests:
+      description: Przekroczony limit zapytań z adresu IP (odpowiedź nginx, treść HTML)
+    SessionUnavailable:
+      description: Usługa sesji (Redis) niedostępna – spróbuj ponownie później
+      content:
+        application/json:
+          schema:
+            oneOf:
+              - $ref: '#/components/schemas/Message'
+              - $ref: '#/components/schemas/Error'
+    ServerError:
+      description: Błąd serwera (np. zapisu w bazie lub wysyłki e-maila)
+      content:
+        application/json:
+          schema: { $ref: '#/components/schemas/Error' }

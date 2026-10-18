@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import api from '../api';
+import { YEAR_MIN, YEAR_MAX } from '../constants';
 
 const PAGE_SIZE = 10;
 
@@ -55,7 +56,7 @@ function Photos() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -93,7 +94,7 @@ function Photos() {
           border: '1px solid var(--border-color)'
         }}>
           <div className="form-group" style={{ marginBottom: 0, minWidth: '200px' }}>
-            <label style={{ 
+            <label htmlFor="filter-name" style={{ 
               color: 'var(--text-secondary)', 
               fontSize: '14px', 
               marginBottom: '8px', 
@@ -102,6 +103,7 @@ function Photos() {
               🔍 Nazwa
             </label>
             <input
+              id="filter-name"
               className="input-field"
               type="text"
               value={nameFilter}
@@ -110,8 +112,8 @@ function Photos() {
             />
           </div>
           
-          <div className="form-group" style={{ marginBottom: 0, minWidth: '100px' }}>
-            <label style={{ 
+          <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
+            <label htmlFor="filter-year-from" style={{ 
               color: 'var(--text-secondary)', 
               fontSize: '14px', 
               marginBottom: '8px', 
@@ -120,18 +122,19 @@ function Photos() {
               📅 Rok od
             </label>
             <input
+              id="filter-year-from"
               className="input-field"
               type="number"
               value={yearFrom}
               onChange={handleFilterChange(setYearFrom)}
               placeholder="np. 2000"
-              min={1}
-              max={9999}
+              min={YEAR_MIN}
+              max={YEAR_MAX}
             />
           </div>
           
-          <div className="form-group" style={{ marginBottom: 0, minWidth: '100px' }}>
-            <label style={{ 
+          <div className="form-group" style={{ marginBottom: 0, minWidth: '150px' }}>
+            <label htmlFor="filter-year-to" style={{ 
               color: 'var(--text-secondary)', 
               fontSize: '14px', 
               marginBottom: '8px', 
@@ -140,13 +143,14 @@ function Photos() {
               📅 Rok do
             </label>
             <input
+              id="filter-year-to"
               className="input-field"
               type="number"
               value={yearTo}
               onChange={handleFilterChange(setYearTo)}
               placeholder="np. 2024"
-              min={1}
-              max={9999}
+              min={YEAR_MIN}
+              max={YEAR_MAX}
             />
           </div>
           
@@ -183,9 +187,10 @@ function Photos() {
             </div>
           )}
           {paginated.map(photo => (
-            <div
+            <Link
               key={photo.id}
-              onClick={() => navigate(`/photo/${photo.id}`)}
+              to={`/photo/${photo.id}`}
+              className="photo-card-link"
               style={{ 
                 cursor: 'pointer', 
                 textAlign: 'center',
@@ -232,7 +237,7 @@ function Photos() {
                   </>
                 )}
               </div>
-            </div>
+            </Link>
           ))}
         </div>
 

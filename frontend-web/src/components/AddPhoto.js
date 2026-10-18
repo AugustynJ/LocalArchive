@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import { YEAR_MIN, YEAR_MAX } from '../constants';
 
 const MAX_FILE_SIZE = 1 * 1024 * 1024; // 1 MB
 
@@ -37,7 +38,7 @@ function AddPhoto() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -69,6 +70,7 @@ function AddPhoto() {
     if (!name.trim()) validationErrors.push('Nazwa zdjęcia jest wymagana.');
     if (!location.trim()) validationErrors.push('Lokalizacja jest wymagana.');
     if (year && !/^\d+$/.test(year)) validationErrors.push('Rok musi być liczbą całkowitą.');
+    else if (year && (parseInt(year) < YEAR_MIN || parseInt(year) > YEAR_MAX)) validationErrors.push(`Rok musi być z zakresu ${YEAR_MIN}–${YEAR_MAX}.`);
     if (!file) validationErrors.push('Zdjęcie jest wymagane.');
 
     if (validationErrors.length > 0) {
@@ -136,51 +138,50 @@ function AddPhoto() {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
+              <label htmlFor="add-title" className="field-label">Nazwa zdjęcia</label>
               <input
+                id="add-title"
                 className="input-field"
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="Nazwa zdjęcia"
                 maxLength={100}
                 required
               />
             </div>
 
             <div className="form-group">
+              <label htmlFor="add-location" className="field-label">Lokalizacja</label>
               <input
+                id="add-location"
                 className="input-field"
                 type="text"
                 value={location}
                 onChange={(e) => setLocation(e.target.value)}
-                placeholder="Lokalizacja"
                 maxLength={255}
                 required
               />
             </div>
 
             <div className="form-group">
+              <label htmlFor="add-year" className="field-label">Rok (opcjonalnie)</label>
               <input
+                id="add-year"
                 className="input-field"
                 type="number"
                 value={year}
                 onChange={(e) => setYear(e.target.value)}
-                placeholder="Rok (opcjonalnie)"
-                min={1}
-                max={9999}
+                min={YEAR_MIN}
+                max={YEAR_MAX}
               />
             </div>
 
             <div className="form-group">
-              <label style={{ 
-                color: 'var(--text-secondary)', 
-                fontSize: '14px', 
-                marginBottom: '8px', 
-                display: 'block' 
-              }}>
+              <label htmlFor="add-file" className="field-label">
                 📷 Zdjęcie (maks. 1 MB):
               </label>
               <input
+                id="add-file"
                 type="file"
                 accept="image/*"
                 onChange={handleFileChange}

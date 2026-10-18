@@ -13,7 +13,7 @@ function validatePasswordPolicy(password) {
   return errors;
 }
 
-const API_BASE = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_BASE = process.env.REACT_APP_API_URL || '';
 
 function ResetPassword() {
   const { token } = useParams();
@@ -81,7 +81,7 @@ function ResetPassword() {
     return (
       <div className="page-container fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Sprawdzanie linku…</div>
           </div>
         </div>

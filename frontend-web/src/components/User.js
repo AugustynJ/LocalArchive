@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import api from '../api';
+import { SESSION_REQUIRED } from '../constants';
 import { useNavigate } from 'react-router-dom';
 
 function User() {
@@ -15,7 +16,7 @@ function User() {
       setUserInfo(response.data);
       setError('');
     } catch (err) {
-      if (err.response?.status === 401) {
+      if (err.response?.status === SESSION_REQUIRED) {
         // Token expired or invalid - redirect to login
         navigate('/login');
       } else if (err.response?.status === 403) {
@@ -43,13 +44,12 @@ function User() {
     } catch (err) {
       // If logout fails, still redirect to login but show error
       console.error('Logout error:', err);
-      if (err.response?.status === 401) {
+      if (err.response?.status === SESSION_REQUIRED) {
         // Token already expired, just redirect
         navigate('/login');
       } else {
         // Show error but still redirect for security
-        alert('Błąd podczas wylogowywania, ale zostaniesz przekierowany');
-        navigate('/login');
+        navigate('/login', { state: { logoutFailed: true } });
       }
     }
   };
@@ -58,7 +58,7 @@ function User() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>⏳ Ładowanie...</div>
           </div>
         </div>
@@ -133,7 +133,7 @@ function User() {
           </div>
         </div>
         
-        <div className="navigation-section">
+        <nav className="navigation-section" aria-label="Nawigacja">
           <h2>Nawigacja</h2>
           <div className="button-group">
             <button onClick={() => navigate('/photos')} className="btn btn-primary">
@@ -152,7 +152,7 @@ function User() {
               </button>
             )}
           </div>
-        </div>
+        </nav>
 
         <div className="navigation-section">
           <h2>Konto</h2>

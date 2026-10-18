@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import api from '../api';
 import { useNavigate } from 'react-router-dom';
+import PasswordInput from './PasswordInput';
 
 function Register() {
   const [firstName, setFirstName] = useState('');
@@ -12,6 +13,7 @@ function Register() {
   const [passwordError, setPasswordError] = useState('');
   const [firstNameError, setFirstNameError] = useState('');
   const [lastNameError, setLastNameError] = useState('');
+  const [formError, setFormError] = useState('');
   const navigate = useNavigate();
 
   const handleRegister = async (e) => {
@@ -22,6 +24,7 @@ function Register() {
     setLastNameError('');
     setEmailError('');
     setPasswordError('');
+    setFormError('');
     
     // Frontend validation
     let hasErrors = false;
@@ -60,7 +63,7 @@ function Register() {
         email, 
         password 
       });
-      navigate('/login');
+      navigate('/login', { state: { registered: true } });
     } catch (err) {
       if (err.response?.data?.errors) {
         // Handle validation errors from backend
@@ -75,15 +78,17 @@ function Register() {
         if (err.response.data.error.includes('Email already exists')) {
           setEmailError('Email jest już zajęty');
         } else {
-          alert(err.response.data.error);
+          setFormError(err.response.data.error);
         }
       } else {
-        alert('Błąd rejestracji');
+        setFormError(err.response?.status === 429
+          ? 'Zbyt wiele prób. Spróbuj ponownie za minutę.'
+          : !err.response ? 'Brak połączenia z serwerem. Spróbuj ponownie.' : 'Błąd rejestracji');
       }
     }
   };
 
-  const handleEmailBlur = async () => {
+  const handleEmailBlur = () => {
     if (email) {
       // Validate email length
       if (email.length > 50) {
@@ -97,20 +102,8 @@ function Register() {
         return;
       }
       
-      try {
-        const response = await api.post('/register/check_email', { email });
-        if (response.data.exists) {
-          setEmailError('Email jest już zajęty');
-        } else {
-          setEmailError('');
-        }
-      } catch (err) {
-        if (err.response?.data?.error) {
-          setEmailError(err.response.data.error);
-        } else {
-          setEmailError('Błąd podczas sprawdzania email');
-        }
-      }
+      // Zajętość adresu sprawdza dopiero rejestracja (brak publicznego endpointu do sprawdzania kont)
+      setEmailError('');
     }
   };
 
@@ -131,71 +124,80 @@ function Register() {
       <div className="content-wrapper">
         <div className="form-container">
           <h1>Rejestracja</h1>
+          {formError && <div className="error-banner" role="alert">⚠️ {formError}</div>}
           <form onSubmit={handleRegister}>
             <div className="form-group">
-              <input 
+              <label htmlFor="reg-first-name" className="field-label">Imię</label>
+              <input
+                id="reg-first-name"
+                aria-invalid={!!firstNameError}
+                aria-describedby={firstNameError ? 'reg-first-name-error' : undefined} 
                 className="input-field"
                 type="text" 
                 value={firstName}
                 onChange={e => setFirstName(e.target.value)} 
-                placeholder="Imię" 
                 maxLength="50"
                 required
               />
-              {firstNameError && <div className="error-message">⚠️ {firstNameError}</div>}
+              {firstNameError && <div id="reg-first-name-error" className="error-message">⚠️ {firstNameError}</div>}
             </div>
             
             <div className="form-group">
-              <input 
+              <label htmlFor="reg-last-name" className="field-label">Nazwisko</label>
+              <input
+                id="reg-last-name"
+                aria-invalid={!!lastNameError}
+                aria-describedby={lastNameError ? 'reg-last-name-error' : undefined} 
                 className="input-field"
                 type="text" 
                 value={lastName}
                 onChange={e => setLastName(e.target.value)} 
-                placeholder="Nazwisko" 
                 maxLength="50"
                 required
               />
-              {lastNameError && <div className="error-message">⚠️ {lastNameError}</div>}
+              {lastNameError && <div id="reg-last-name-error" className="error-message">⚠️ {lastNameError}</div>}
             </div>
             
             <div className="form-group">
-              <input 
+              <label htmlFor="reg-email" className="field-label">Email</label>
+              <input
+                id="reg-email"
+                aria-invalid={!!emailError}
+                aria-describedby={emailError ? 'reg-email-error' : undefined} 
                 className="input-field"
                 type="email" 
                 value={email}
                 onChange={e => setEmail(e.target.value)} 
                 onBlur={handleEmailBlur}
-                placeholder="Email" 
                 maxLength="50"
                 required
               />
-              {emailError && <div className="error-message">⚠️ {emailError}</div>}
+              {emailError && <div id="reg-email-error" className="error-message">⚠️ {emailError}</div>}
             </div>
             
             <div className="form-group">
-              <input 
-                className="input-field"
-                type="password" 
+              <label htmlFor="reg-password" className="field-label">Hasło</label>
+              <PasswordInput id="reg-password" 
                 value={password}
                 onChange={e => setPassword(e.target.value)} 
-                placeholder="Hasło" 
                 maxLength="127"
                 required
               />
             </div>
             
             <div className="form-group">
-              <input 
-                className="input-field"
-                type="password" 
+              <label htmlFor="reg-password2" className="field-label">Powtórz hasło</label>
+              <PasswordInput
+                id="reg-password2"
+                aria-invalid={!!passwordError}
+                aria-describedby={passwordError ? 'reg-password2-error' : undefined} 
                 value={repeatPassword}
                 onChange={e => setRepeatPassword(e.target.value)} 
                 onBlur={handleRepeatPasswordBlur}
-                placeholder="Powtórz hasło" 
                 maxLength="127"
                 required
               />
-              {passwordError && <div className="error-message">⚠️ {passwordError}</div>}
+              {passwordError && <div id="reg-password2-error" className="error-message">⚠️ {passwordError}</div>}
             </div>
             
             <div className="button-group">

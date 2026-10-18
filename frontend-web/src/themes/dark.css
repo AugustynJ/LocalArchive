@@ -1,0 +1,22 @@
+/* Motyw ciemny: neutralne szarości + niebieski akcent.
+   Kontrast wszystkich par tekst/tło ≥ 4.5:1 (WCAG 2.2 AA).
+   Poprzednia wersja: themes/dark-legacy.css */
+:root[data-theme="dark"] {
+  --primary-color: #5aa9ec;        /* akcenty, linki, obramowania aktywnych pól */
+  --primary-hover: #8cc4f2;
+  --secondary-color: #4a525d;      /* tło przycisku drugorzędnego po najechaniu */
+  --background-color: #121417;     /* tło strony */
+  --surface-color: #1c1f24;        /* karty, panele */
+  --text-color: #e6e8eb;
+  --text-secondary: #a3abb5;
+  --border-color: #343a42;
+  --shadow-color: rgba(0, 0, 0, 0.45);
+  --error-color: #f0776b;
+  --success-color: #3fbf7a;
+  --warning-color: #f5b041;
+  --input-bg: #24282e;             /* pola formularzy – szare, nie granatowe */
+  --button-gradient: linear-gradient(145deg, #2b78bb, #1f6aa8);
+  --button-secondary-bg: #3a414b;
+  --button-danger-bg: #c0392b;     /* tła przycisków z białym tekstem – kontrast ≥ 4.5:1 */
+  --button-success-bg: #1e8449;
+}

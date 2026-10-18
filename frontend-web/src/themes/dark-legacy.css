@@ -1,0 +1,21 @@
+/* Poprzedni motyw ciemny (do 14.10.2026). Aby wrócić: w App.js zamień import
+   './themes/dark.css' na './themes/dark-legacy.css'. */
+:root[data-theme="dark"] {
+  --primary-color: #3498db;
+  --primary-hover: #5dade2;
+  --secondary-color: #34495e;
+  --background-color: #1a1a1a;
+  --surface-color: #2c2c2c;
+  --text-color: #ecf0f1;
+  --text-secondary: #bdc3c7;
+  --border-color: #555;
+  --shadow-color: rgba(0, 0, 0, 0.3);
+  --error-color: #e74c3c;
+  --success-color: #27ae60;
+  --warning-color: #f39c12;
+  --input-bg: #34495e;
+  --button-gradient: linear-gradient(145deg, #5dade2, #3498db);
+  --button-secondary-bg: #bdc3c7;
+  --button-danger-bg: #e74c3c;
+  --button-success-bg: #27ae60;
+}

@@ -1,6 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import ConfirmDialog from './ConfirmDialog';
+import Notice from './Notice';
 
 const ROLES = ['admin', 'editor', 'viewer'];
 
@@ -8,9 +10,10 @@ function ManageUsers() {
   const [users, setUsers] = useState([]);
   const [pendingRoles, setPendingRoles] = useState({});
   const [loading, setLoading] = useState(true);
+  const [actionMessage, setActionMessage] = useState(null);
+  const [pending, setPending] = useState(null); // { id, name, block } – czeka na potwierdzenie
   const [saving, setSaving] = useState(false);
   const [saveMessage, setSaveMessage] = useState(null);
-  const [hoveredUserId, setHoveredUserId] = useState(null);
   const navigate = useNavigate();
 
   const fetchData = useCallback(async () => {
@@ -46,23 +49,20 @@ function ManageUsers() {
     });
   };
 
-  const handleBlock = async (userId, userName) => {
-    if (!window.confirm(`Czy na pewno chcesz zablokować użytkownika "${userName}"?`)) return;
-    try {
-      await api.put(`/admin/users/${userId}/block`);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: true } : u));
-    } catch (err) {
-      alert('Błąd podczas blokowania użytkownika.');
-    }
-  };
+  const closeDialog = useCallback(() => setPending(null), []);
+  const handleBlock = (id, name) => setPending({ id, name, block: true });
+  const handleUnblock = (id, name) => setPending({ id, name, block: false });
 
-  const handleUnblock = async (userId, userName) => {
-    if (!window.confirm(`Czy na pewno chcesz odblokować użytkownika "${userName}"?`)) return;
+  const confirmToggle = async () => {
+    const { id, name, block } = pending;
+    setPending(null);
+    setActionMessage(null);
     try {
-      await api.put(`/admin/users/${userId}/unblock`);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, is_blocked: false } : u));
+      await api.put(`/admin/users/${id}/${block ? 'block' : 'unblock'}`);
+      setUsers(prev => prev.map(x => x.id === id ? { ...x, is_blocked: block } : x));
+      setActionMessage({ type: 'success', text: `Użytkownik „${name}” został ${block ? 'zablokowany' : 'odblokowany'}.` });
     } catch (err) {
-      alert('Błąd podczas odblokowywania użytkownika.');
+      setActionMessage({ type: 'error', text: `Błąd podczas ${block ? 'blokowania' : 'odblokowywania'} użytkownika. Spróbuj ponownie.` });
     }
   };
 
@@ -88,7 +88,7 @@ function ManageUsers() {
     return (
       <div className="page-container with-header fade-in">
         <div className="content-wrapper">
-          <div className="loading-container">
+          <div className="loading-container" role="status">
             <div>🔄 Ładowanie...</div>
           </div>
         </div>
@@ -102,6 +102,16 @@ function ManageUsers() {
     <div className="page-container with-header fade-in">
       <div className="content-wrapper wide">
         <h1>👥 Zarządzanie użytkownikami</h1>
+        <Notice message={actionMessage} />
+        <ConfirmDialog
+          open={!!pending}
+          title={pending?.block ? 'Zablokować użytkownika?' : 'Odblokować użytkownika?'}
+          message={pending ? `Czy na pewno chcesz ${pending.block ? 'zablokować' : 'odblokować'} użytkownika „${pending.name}”?` : ''}
+          confirmLabel={pending?.block ? 'Zablokuj' : 'Odblokuj'}
+          danger={!!pending?.block}
+          onConfirm={confirmToggle}
+          onCancel={closeDialog}
+        />
         
         <div style={{ 
           color: 'var(--text-secondary)', 
@@ -119,33 +129,13 @@ function ManageUsers() {
             <p>👥 Brak użytkowników.</p>
           </div>
         ) : (
-          <div style={{
-            overflowX: 'auto',
-            backgroundColor: 'var(--surface-color)',
-            borderRadius: '8px',
-            border: '1px solid var(--border-color)',
-            marginBottom: '20px',
-            width: '90%',
-            margin: '0 auto 20px auto'
-          }}>
-            <table style={{ 
-              borderCollapse: 'collapse', 
-              width: '100%',
-              backgroundColor: 'var(--surface-color)'
-            }}>
+          <div className="table-wrapper">
+            <table className="data-table">
+              <caption className="sr-only">Użytkownicy</caption>
               <thead>
-                <tr style={{ backgroundColor: 'var(--background-color)' }}>
-                  {['ID', 'Imię', 'Nazwisko', 'Email', 'Rola', 'Uprawnienia', 'Zablokowany', 'Ostatnie logowanie', 'Blokada'].map(h => (
-                    <th key={h} style={{ 
-                      border: '1px solid var(--border-color)', 
-                      padding: '12px 8px', 
-                      textAlign: 'left', 
-                      color: 'var(--text-color)',
-                      fontWeight: '600',
-                      fontSize: '14px'
-                    }}>
-                      {h}
-                    </th>
+                <tr>
+                  {['ID', 'Użytkownik', 'Rola', 'Ostatnie logowanie', 'Status'].map(h => (
+                    <th key={h} scope="col">{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -153,126 +143,47 @@ function ManageUsers() {
                 {users.map(u => {
                   const currentPending = pendingRoles[u.id];
                   const changed = currentPending !== undefined;
+                  const name = `${u.first_name} ${u.last_name}`;
                   return (
-                    <tr key={u.id} style={{
-                      borderBottom: '1px solid var(--border-color)',
-                      backgroundColor: changed 
-                        ? 'rgba(241, 196, 15, 0.1)' 
-                        : 'var(--surface-color)'
-                    }}>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px',
-                        color: 'var(--text-secondary)',
-                        fontSize: '14px'
-                      }}>
-                        {u.id}
+                    <tr key={u.id} className={changed ? 'row-changed' : undefined}>
+                      <td data-label="ID" className="cell-muted">{u.id}</td>
+                      <td data-label="Użytkownik">
+                        <div>
+                          <div className="user-cell-name">{name}</div>
+                          <div className="user-cell-email">{u.email}</div>
+                        </div>
                       </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px',
-                        color: 'var(--text-color)',
-                        fontWeight: '500'
-                      }}>
-                        {u.first_name}
+                      <td data-label="Rola">
+                        <div>
+                          <select
+                            className="table-select"
+                            aria-label={`Rola użytkownika ${name}`}
+                            value={changed ? currentPending : u.role}
+                            onChange={e => handleRoleChange(u.id, e.target.value)}
+                          >
+                            {ROLES.map(r => (
+                              <option key={r} value={r}>{r}</option>
+                            ))}
+                          </select>
+                          {changed && <div className="cell-hint">było: {u.role}</div>}
+                        </div>
                       </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px',
-                        color: 'var(--text-color)',
-                        fontWeight: '500'
-                      }}>
-                        {u.last_name}
-                      </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px',
-                        color: 'var(--text-secondary)',
-                        fontSize: '14px'
-                      }}>
-                        {u.email}
-                      </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px'
-                      }}>
-                        <span className="status-badge status-active">
-                          {u.role}
-                        </span>
-                      </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px'
-                      }}>
-                        <select
-                          value={currentPending !== undefined ? currentPending : u.role}
-                          onChange={e => handleRoleChange(u.id, e.target.value)}
-                          style={{
-                            padding: '6px 8px',
-                            border: '2px solid var(--border-color)',
-                            borderRadius: '4px',
-                            backgroundColor: 'var(--input-bg)',
-                            color: 'var(--text-color)',
-                            fontSize: '14px',
-                            width: '100%',
-                            transition: 'border-color 0.3s ease'
-                          }}
-                          onFocus={(e) => {
-                            e.target.style.borderColor = 'var(--primary-color)';
-                          }}
-                          onBlur={(e) => {
-                            e.target.style.borderColor = 'var(--border-color)';
-                          }}
-                        >
-                          {ROLES.map(r => (
-                            <option key={r} value={r}>{r}</option>
-                          ))}
-                        </select>
-                      </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px'
-                      }}>
-                        <span className={u.is_blocked ? 'status-blocked' : 'status-active'}>
-                          {u.is_blocked ? 'Tak' : 'Nie'}
-                        </span>
-                      </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px',
-                        color: 'var(--text-secondary)',
-                        fontSize: '13px'
-                      }}>
+                      <td data-label="Ostatnie logowanie" className="cell-muted">
                         {u.last_login_date ? new Date(u.last_login_date).toLocaleString('pl-PL') : '—'}
                       </td>
-                      <td style={{ 
-                        border: '1px solid var(--border-color)', 
-                        padding: '8px'
-                      }}>
-                        <button
-                          onClick={() => u.is_blocked
-                            ? handleUnblock(u.id, `${u.first_name} ${u.last_name}`)
-                            : handleBlock(u.id, `${u.first_name} ${u.last_name}`)
-                          }
-                          onMouseEnter={() => setHoveredUserId(u.id)}
-                          onMouseLeave={() => setHoveredUserId(null)}
-                          className="btn"
-                          style={{
-                            fontSize: '12px',
-                            padding: '6px 12px',
-                            minWidth: '100px',
-                            backgroundColor: u.is_blocked
-                              ? (hoveredUserId === u.id ? 'var(--success-color)' : 'var(--text-secondary)')
-                              : 'var(--error-color)',
-                            color: 'white',
-                            border: 'none'
-                          }}
-                        >
-                          {u.is_blocked
-                            ? (hoveredUserId === u.id ? '✔️ Odblokuj' : '🚫 Zablokowany')
-                            : '🚫 Zablokuj'
-                          }
-                        </button>
+                      <td data-label="Status">
+                        <div className="status-cell">
+                          <span className={`status-badge ${u.is_blocked ? 'status-blocked' : 'status-active'}`}>
+                            {u.is_blocked ? 'Zablokowany' : 'Aktywny'}
+                          </span>
+                          <button
+                            onClick={() => u.is_blocked ? handleUnblock(u.id, name) : handleBlock(u.id, name)}
+                            aria-label={`${u.is_blocked ? 'Odblokuj' : 'Zablokuj'} użytkownika ${name}`}
+                            className={`btn btn-small ${u.is_blocked ? 'btn-success' : 'btn-danger'}`}
+                          >
+                            {u.is_blocked ? '✔️ Odblokuj' : '🚫 Zablokuj'}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -310,12 +221,7 @@ function ManageUsers() {
           <button
             onClick={handleSave}
             disabled={!hasChanges || saving}
-            className={hasChanges ? "btn btn-primary" : "btn"}
-            style={{
-              backgroundColor: hasChanges ? undefined : 'var(--text-secondary)',
-              cursor: hasChanges ? 'pointer' : 'default',
-              opacity: hasChanges ? 1 : 0.6
-            }}
+            className={hasChanges ? "btn btn-primary" : "btn btn-muted"}
           >
             {saving ? '🔄 Zapisywanie...' : '💾 Zapisz zmiany'}
             {hasChanges && (

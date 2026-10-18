@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
+import PasswordInput from './PasswordInput';
 
 function validatePasswordPolicy(password) {
   const errors = [];
@@ -96,39 +97,36 @@ function PasswordChange() {
 
           <form onSubmit={handleSubmit}>
             <div className="form-group">
-              <input
-                className="input-field"
-                type="password"
+              <label htmlFor="pw-current" className="field-label">Aktualne hasło</label>
+              <PasswordInput
+                id="pw-current"
                 name="current_password"
                 value={form.current_password}
                 onChange={handleChange}
-                placeholder="Aktualne hasło"
                 autoComplete="current-password"
                 required
               />
             </div>
             
             <div className="form-group">
-              <input
-                className="input-field"
-                type="password"
+              <label htmlFor="pw-new" className="field-label">Nowe hasło</label>
+              <PasswordInput
+                id="pw-new"
                 name="new_password"
                 value={form.new_password}
                 onChange={handleChange}
-                placeholder="Nowe hasło"
                 autoComplete="new-password"
                 required
               />
             </div>
             
             <div className="form-group">
-              <input
-                className="input-field"
-                type="password"
+              <label htmlFor="pw-repeat" className="field-label">Powtórz nowe hasło</label>
+              <PasswordInput
+                id="pw-repeat"
                 name="repeat_password"
                 value={form.repeat_password}
                 onChange={handleChange}
-                placeholder="Powtórz nowe hasło"
                 autoComplete="new-password"
                 required
               />

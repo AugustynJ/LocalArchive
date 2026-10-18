@@ -81,12 +81,12 @@ Zespół OKNO
     msg.attach(MIMEText(html_body, "html", "utf-8"))
 
     if smtp_port == 465:
-        with smtplib.SMTP_SSL(smtp_host, smtp_port) as server:
+        with smtplib.SMTP_SSL(smtp_host, smtp_port, timeout=10) as server:
             if smtp_user and smtp_password:
                 server.login(smtp_user, smtp_password)
             server.sendmail(smtp_from, to_email, msg.as_string())
     else:
-        with smtplib.SMTP(smtp_host, smtp_port) as server:
+        with smtplib.SMTP(smtp_host, smtp_port, timeout=10) as server:
             server.ehlo()
             server.starttls()
             server.ehlo()
